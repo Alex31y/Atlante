@@ -2,7 +2,7 @@
   "name": "atlante",
   "displayName": "Atlante",
   "description": "Deterministic repo map for refactor triage after coding-agent sessions.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "OlexiyLysytsya",
   "icon": "resources/atlante-icon.png",
   "license": "MIT",
