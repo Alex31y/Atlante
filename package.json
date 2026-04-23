@@ -2,7 +2,7 @@
   "name": "atlante",
   "displayName": "Atlante",
   "description": "Deterministic repo map for refactor triage after coding-agent sessions.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "OlexiyLysytsya",
   "icon": "resources/atlante-icon.png",
   "license": "MIT",
@@ -197,7 +197,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "package": "vsce package",
-    "release": "npm run build && vsce publish patch"
+    "release": "npm version patch --no-git-tag-version && npm run build && vsce package"
   },
   "dependencies": {
     "web-tree-sitter": "^0.25.10"
