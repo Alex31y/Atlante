@@ -1,130 +1,118 @@
-﻿# Atlante Documentation
+# Atlante
 
-Atlante is a deterministic VS Code extension for mapping a repository after fast coding sessions. It scans local source files, builds a source inventory, and highlights files that may deserve refactor attention through immediate metrics and dependency views.
+**Deterministic repo triage for AI-assisted developers.**
 
-Atlante does not use LLMs, external inference APIs, cloud services, API keys, embeddings, or remote analysis. All current analysis is local and deterministic.
+Atlante scans your workspace and shows you, locally and without any LLM, which files in your repo deserve attention right now — the ones that grew too large, became import hubs, or drifted into cycles while you were shipping fast.
 
-## Current Features
+<p align="center">
+  <img src="docs/assets/graph.png" alt="Dependency Constellation" width="900" />
+</p>
 
-- Workspace source scan for JavaScript, TypeScript, Python, and supported Tree-sitter grammars.
-- File inventory with path, language, line count, imports, exports, fan-in, and fan-out.
-- KPI strip for total files, total lines, internal dependency edges, unresolved imports, and language count.
-- Search by file path, import source, and exported symbol.
-- Filters by language and top-level folder.
-- Quick filters for large files, high fan-in, high fan-out, and unresolved imports.
-- Sortable inventory table.
-- File details drawer with symbols, imports, resolved dependencies, dependents, and an Open File action.
-- Dependency constellation graph built from resolved internal imports.
-- Graph pan, zoom, fit, fullscreen, edge focus mode, language legend, and file selection details.
-- Project sidebar with analyzed project library and deterministic project summaries.
+## Why
 
-## What The Scan Produces
+AI-assisted coding amplifies volume. Structural judgment doesn't scale at the same speed:
 
-Each analyzed file contributes:
+- files grow past 3,000 lines before anyone notices
+- dead code accumulates — the agent writes helpers that will never be called
+- duplicate imports and cycles appear by accident, not by choice
+- silent fan-in turns innocent modules into single points of failure
 
-- `filePath`
-- `language`
-- `loc`
-- `imports`
-- `exports`
-- `classes`, `functions`, `interfaces`, `symbols`
-- `resolvedDependencies`
-- `unresolvedImports`
-- `dependents`
-- `fanIn`
-- `fanOut`
-- `topLevelDirectory`
-- `parentDirectory`
+Linters look at one line. Type checkers look at types. Neither tells you *which file to refactor next*. Atlante does.
 
-Workspace summary data includes:
+Three principles, in order:
 
-- total source files
-- language counts
-- top directories
-- total internal dependency edges
-- unresolved import count
-- generated timestamp
+1. **Deterministic.** Same input → same output. Always.
+2. **Local.** Nothing leaves your machine. No accounts, no uploads, no telemetry.
+3. **Prescriptive.** Not "here's a graph to interpret" — "these are the files that matter, sorted".
 
-## Views
+## What you get today
 
-### Inventory Table
+<p align="center">
+  <img src="docs/assets/table.png" alt="Source Inventory Table" width="900" />
+</p>
 
-The table is the primary view for triage. It keeps the repository sortable and searchable while showing the most useful deterministic metrics next to each file.
+- **Source inventory table** — every file with LOC, imports, exports, fan-in, fan-out. Sortable, searchable, filterable.
+- **Quick filters** — *Large files*, *High fan-in*, *High fan-out*, *Unresolved imports*. One click, see what stands out.
+- **File details drawer** — symbols, imports (resolved vs external vs unresolved), dependents, open-file action.
+- **Dependency Constellation** — interactive graph of internal dependencies, clustered by top-level folder, with a focus mode to see only what connects to the selected file.
+- **Project library** — analyze multiple projects, switch between them from the sidebar.
+- **Persistent analysis** — results are serialized under `.atlante/` in your workspace: stable JSON, diff-friendly, versionable.
 
-A selected row opens a details drawer. The drawer is an overlay, so the table layout does not change when details are open.
+Supported languages: JavaScript, TypeScript, Python via Tree-sitter AST; Java, C#, Go, Rust, Kotlin, Swift, Ruby, PHP via a generic/fallback parser.
 
-### Dependency Constellation
+## What's next
 
-The graph view renders files as stars grouped by top-level directory. Edges represent resolved internal imports. Star color is based on language and star size reflects dependency surface through fan-in/fan-out.
+The next layer is **diagnostics** — deterministic rules that turn the inventory into actionable refactor flags (`god-file`, `giant-function`, `hub-file`, `file-cycle`, `dead-export`, and more). The full plan lives in [docs/todo/diagnostics.md](docs/todo/diagnostics.md).
 
-Controls include:
+See [docs/vision.md](docs/vision.md) for the longer framing.
 
-- mouse wheel zoom
-- drag to pan
-- fit view
-- fullscreen
-- all edges vs selected-neighborhood edges
-- selected file details
+## Install
 
-## Runtime Architecture
-
-- VS Code extension host coordinates project selection, analysis commands, storage, and webview panels.
-- AST worker parses files using Tree-sitter/WebAssembly grammars.
-- Source inventory builder aggregates file structures, imports, exports, dependency resolution, fan-in, and fan-out.
-- React webview renders the table, filters, file drawer, and graph.
-- Project storage persists Atlante data under `.atlante` in the analyzed project.
-
-## Commands
-
-The current command identifiers still use the legacy `archlens.*` namespace for compatibility:
-
-- `archlens.showDiagram`
-- `archlens.analyzeWorkspace`
-- `archlens.refreshDiagram`
-- `archlens.switchProject`
-- `archlens.removeProject`
-
-User-facing titles are branded as Atlante.
-
-## Development
-
-Install dependencies:
+Atlante is not yet on the VS Code Marketplace. To try it locally:
 
 ```bash
+git clone https://github.com/Alex31y/Atlante.git
+cd Atlante
 npm install
-```
-
-Build:
-
-```bash
 npm run build
-```
-
-Type-check:
-
-```bash
-npm run lint
-```
-
-Run tests:
-
-```bash
-npm test
-```
-
-Package the extension:
-
-```bash
 npm run package
 ```
 
-## Non-Goals For This MVP
+Then in VS Code: **Extensions → ⋯ → Install from VSIX…** and pick the generated `atlante-*.vsix`.
 
-- No chat interface.
-- No LLM provider configuration.
-- No API keys.
-- No external inference.
-- No embeddings or semantic search.
-- No generated architectural reports.
+## Use
 
-Atlante is currently focused on immediate local repo triage: inventory, metrics, dependencies, and navigation.
+1. Open any workspace.
+2. Command palette → **Atlante** (opens the panel).
+3. Click **Analyze Workspace** in the sidebar.
+4. Explore: sort the table, flip to the graph, click rows for details.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `archlens.showDiagram` | Open the Atlante panel |
+| `archlens.analyzeWorkspace` | Run a full scan |
+| `archlens.refreshDiagram` | Re-analyze the workspace |
+| `archlens.switchProject` | Switch the active analyzed project |
+| `archlens.removeProject` | Remove a project from the library |
+
+Per-feature docs: [docs/reference/](docs/reference/README.md).
+
+## Settings
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `archlens.excludePatterns` | 40+ globs | Folders/files skipped during analysis |
+| `archlens.maxFilesForFullAnalysis` | 500 | Warn threshold before analyzing very large workspaces |
+
+## Development
+
+```bash
+npm install
+npm run build        # full build
+npm run watch        # rebuild on change
+npm run lint         # tsc --noEmit
+npm test             # vitest
+npm run package      # produce .vsix
+```
+
+Repo layout:
+
+```
+src/
+├── extension/   # VS Code host (commands, providers, services, watchers)
+├── webview/     # React UI (inventory + graph)
+├── workers/     # Worker-thread Tree-sitter parsing
+└── shared/      # Types, constants, import resolver
+```
+
+## Non-goals
+
+- No chat, no LLM, no API keys, no embeddings.
+- No cloud analysis, no telemetry on your code.
+- Not a linter, not a type checker, not a runtime profiler.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
