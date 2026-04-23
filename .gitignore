@@ -10,4 +10,5 @@ coverage/
 .cache/
 .turbo/
 .atlante/
+.claude/
 .code-checker/
