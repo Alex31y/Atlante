@@ -4,6 +4,7 @@
   "description": "Deterministic repo map for refactor triage after coding-agent sessions.",
   "version": "0.1.0",
   "publisher": "archlens",
+  "icon": "resources/atlante-icon.png",
   "license": "MIT",
   "engines": {
     "vscode": "^1.96.0"
@@ -134,7 +135,7 @@
         {
           "id": "archlens",
           "title": "Atlante",
-          "icon": "resources/archlens-icon.svg"
+          "icon": "resources/atlante-icon.svg"
         }
       ]
     },
