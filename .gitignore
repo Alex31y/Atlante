@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.vsix
+.env
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+coverage/
+.cache/
+.turbo/
+.atlante/
+.code-checker/

@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "cmd.exe",
+      "args": ["/d", "/c"]
+    }
+  },
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "npm run build",
+      "group": "build",
+      "label": "npm: build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "type": "shell",
+      "command": "npm run watch",
+      "group": "build",
+      "label": "npm: watch",
+      "isBackground": true,
+      "problemMatcher": ["$tsc-watch"]
+    }
+  ]
+}

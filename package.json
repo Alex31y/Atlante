@@ -1,0 +1,216 @@
+{
+  "name": "atlante",
+  "displayName": "Atlante",
+  "description": "Deterministic repo map for refactor triage after coding-agent sessions.",
+  "version": "0.1.0",
+  "publisher": "archlens",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "atlante",
+    "source-inventory",
+    "static-analysis",
+    "imports",
+    "dependencies",
+    "codebase"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "archlens.showDiagram",
+        "title": "Atlante",
+        "icon": "$(symbol-structure)"
+      },
+      {
+        "command": "archlens.analyzeWorkspace",
+        "title": "Atlante: Analyze Workspace"
+      },
+      {
+        "command": "archlens.refreshDiagram",
+        "title": "Atlante: Refresh"
+      },
+      {
+        "command": "archlens.switchProject",
+        "title": "Atlante: Switch Project"
+      },
+      {
+        "command": "archlens.removeProject",
+        "title": "Atlante: Remove Project from Library"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "archlens.analyzeWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "archlens.refreshDiagram",
+          "when": "false"
+        },
+        {
+          "command": "archlens.switchProject"
+        },
+        {
+          "command": "archlens.removeProject",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Atlante",
+      "properties": {
+        "archlens.excludePatterns": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.git/**",
+            "**/vendor/**",
+            "**/__pycache__/**",
+            "**/target/**",
+            "**/.angular/**",
+            "**/.next/**",
+            "**/.nuxt/**",
+            "**/.vite/**",
+            "**/.turbo/**",
+            "**/.cache/**",
+            "**/.output/**",
+            "**/coverage/**",
+            "**/.svelte-kit/**",
+            "**/.venv/**",
+            "**/venv/**",
+            "**/.env/**",
+            "**/Lib/site-packages/**",
+            "**/lib/python*/site-packages/**",
+            "**/.tox/**",
+            "**/.mypy_cache/**",
+            "**/.pytest_cache/**",
+            "**/.ruff_cache/**",
+            "**/*egg-info/**",
+            "**/.gradle/**",
+            "**/.m2/**",
+            "**/out/**",
+            "**/bin/**",
+            "**/obj/**",
+            "**/packages/**",
+            "**/.nuget/**",
+            "**/.build/**",
+            "**/Pods/**",
+            "**/DerivedData/**",
+            "**/.bundle/**",
+            "**/package-lock.json",
+            "**/yarn.lock",
+            "**/pnpm-lock.yaml",
+            "**/poetry.lock",
+            "**/Pipfile.lock",
+            "**/Gemfile.lock",
+            "**/Cargo.lock",
+            "**/go.sum",
+            "**/composer.lock"
+          ],
+          "description": "Glob patterns for files/folders to exclude from deterministic analysis.",
+          "order": 1
+        },
+        "archlens.maxFilesForFullAnalysis": {
+          "type": "number",
+          "default": 500,
+          "description": "Maximum number of source files to include in the deterministic source inventory.",
+          "order": 2
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "archlens",
+          "title": "Atlante",
+          "icon": "resources/archlens-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "archlens": [
+        {
+          "type": "webview",
+          "id": "archlens.sidebarView",
+          "name": "Atlante"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "archlens.getStarted",
+        "title": "Get Started with Atlante",
+        "description": "Scan a workspace and inspect files, imports, exports, and internal dependencies.",
+        "steps": [
+          {
+            "id": "archlens.openInventory",
+            "title": "Open Source Inventory",
+            "description": "Open the deterministic source inventory for the current workspace.\n\n[Open Atlante](command:archlens.showDiagram)",
+            "media": {
+              "markdown": ""
+            }
+          },
+          {
+            "id": "archlens.analyzeWorkspace",
+            "title": "Analyze the Workspace",
+            "description": "Run the static scan to build the file inventory.\n\n[Analyze Source Inventory](command:archlens.analyzeWorkspace)",
+            "media": {
+              "markdown": ""
+            }
+          },
+          {
+            "id": "archlens.reviewInventory",
+            "title": "Review the Inventory",
+            "description": "Use search, filters, and row expansion to inspect imports, exports, fan-in, and fan-out.",
+            "media": {
+              "markdown": ""
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "build:extension": "node scripts/build.mjs --target extension",
+    "build:webview": "node scripts/build.mjs --target webview",
+    "build:workers": "node scripts/build.mjs --target workers",
+    "build:grammars": "node scripts/build-grammars.mjs",
+    "lint": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "web-tree-sitter": "^0.25.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/test-electron": "^2.4.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "prettier": "^3.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
