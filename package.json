@@ -1,8 +1,8 @@
 {
   "name": "atlante",
   "displayName": "Atlante",
-  "description": "Deterministic repo map for refactor triage after coding-agent sessions.",
-  "version": "0.1.3",
+  "description": "Find the files your AI coding agent is silently bloating. Local, deterministic refactor triage.",
+  "version": "0.1.4",
   "publisher": "OlexiyLysytsya",
   "icon": "resources/atlante-icon.png",
   "license": "MIT",
@@ -14,16 +14,19 @@
     "vscode": "^1.96.0"
   },
   "categories": [
+    "Other",
     "Visualization",
-    "Other"
+    "Linters"
   ],
   "keywords": [
-    "atlante",
-    "source-inventory",
-    "static-analysis",
-    "imports",
+    "ai",
+    "claude-code",
+    "cursor",
+    "refactoring",
+    "code-analysis",
     "dependencies",
-    "codebase"
+    "tree-sitter",
+    "productivity"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
