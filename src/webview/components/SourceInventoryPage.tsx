@@ -18,7 +18,16 @@ type SortKey = 'path' | 'language' | 'loc' | 'imports' | 'exports' | 'fanIn' | '
 type SortDirection = 'asc' | 'desc';
 type ViewMode = 'table' | 'graph';
 type GraphEdgeMode = 'all' | 'selected';
-type QuickFilter = 'all' | 'large' | 'fanIn' | 'fanOut' | 'unresolved';
+type QuickFilter = 'all' | 'large' | 'fanIn' | 'fanOut';
+type DependencyGraphNode = {
+  file: FileInventoryItem;
+  filePath: string;
+  x: number;
+  y: number;
+  r: number;
+  criticalR: number;
+  criticalMass: number;
+};
 type GraphViewport = { zoom: number; offsetX: number; offsetY: number };
 type GraphViewportSize = { width: number; height: number };
 type GraphPanSession = {
@@ -205,7 +214,6 @@ export function SourceInventoryPage({
             <Kpi label="Files" value={inventory.summary.totalFiles.toLocaleString()} />
             <Kpi label="Lines" value={totalLoc.toLocaleString()} />
             <Kpi label="Internal Edges" value={inventory.summary.internalDependencyEdges.toLocaleString()} />
-            <Kpi label="Unresolved Imports" value={inventory.summary.unresolvedImportCount.toLocaleString()} />
             <Kpi label="Languages" value={inventory.summary.languages.length.toLocaleString()} />
           </section>
 
@@ -391,8 +399,8 @@ function QuickFilterBar({ value, onChange }: { value: QuickFilter; onChange: (va
     { key: 'large', label: 'Large files' },
     { key: 'fanIn', label: 'High fan-in' },
     { key: 'fanOut', label: 'High fan-out' },
-    { key: 'unresolved', label: 'Unresolved imports' },
   ];
+  // TODO: Restore unresolved-import surfacing once path aliases and package resolution stop producing noisy false positives.
 
   return (
     <section style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flexShrink: 0 }}>
@@ -485,6 +493,7 @@ function DependencyGraphView({
   const [isPanning, setIsPanning] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [edgeMode, setEdgeMode] = useState<GraphEdgeMode>('all');
+  const [criticalMassEnabled, setCriticalMassEnabled] = useState(false);
   const legendLanguages = useMemo(
     () => [...new Set(graphFiles.map((file) => file.language))].sort().slice(0, 5),
     [graphFiles],
@@ -717,6 +726,7 @@ function DependencyGraphView({
               <GraphPill label="Showing" value={`${GRAPH_NODE_LIMIT.toLocaleString()} of ${files.length.toLocaleString()}`} />
             )}
             <GraphToggle value={edgeMode} onChange={setEdgeMode} />
+            <GraphMassToggle enabled={criticalMassEnabled} onChange={setCriticalMassEnabled} />
             <GraphToolButton label="-" title="Zoom out" onClick={() => zoomByButton(0.82)} />
             <GraphToolButton label="+" title="Zoom in" onClick={() => zoomByButton(1.18)} />
             <GraphToolButton label="Fit" title="Fit graph" onClick={resetViewport} />
@@ -728,7 +738,7 @@ function DependencyGraphView({
           </div>
         </div>
         <div ref={canvasRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <GraphLegend languages={legendLanguages} />
+        <GraphLegend languages={legendLanguages} criticalMassEnabled={criticalMassEnabled} />
         <svg
           viewBox={`0 0 ${Math.max(1, viewportSize.width)} ${Math.max(1, viewportSize.height)}`}
           preserveAspectRatio="none"
@@ -826,6 +836,7 @@ function DependencyGraphView({
             const selected = selectedFilePath === node.filePath;
             const connected = connectedFilePaths.has(node.filePath);
             const dimmed = activeFilePath !== null && !connected;
+            const nodeRadius = criticalMassEnabled ? node.criticalR : node.r;
             return (
               <g
                 key={node.filePath}
@@ -835,11 +846,11 @@ function DependencyGraphView({
                 onMouseLeave={() => onHoverFile(null)}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{node.filePath}</title>
+                <title>{`${node.filePath}\nCritical mass: ${node.criticalMass} (${node.file.fanIn} in / ${node.file.fanOut} out)`}</title>
                 <circle
                   cx={node.x}
                   cy={node.y}
-                  r={selected ? node.r + 3.5 : connected ? node.r + 2 : node.r}
+                  r={selected ? nodeRadius + 3.5 : connected ? nodeRadius + 2 : nodeRadius}
                   fill={selected ? '#ffffff' : connected ? '#f9dfa5' : nodeStarFill(node.file.language)}
                   stroke={selected ? '#7de3ff' : connected ? '#f2b95d' : 'rgba(255,255,255,0.62)'}
                   strokeWidth={selected ? 1.8 : connected ? 1.2 : 0.55}
@@ -942,7 +953,13 @@ function MiniMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function GraphLegend({ languages }: { languages: string[] }) {
+function GraphLegend({
+  languages,
+  criticalMassEnabled,
+}: {
+  languages: string[];
+  criticalMassEnabled: boolean;
+}) {
   return (
     <div
       style={{
@@ -975,7 +992,9 @@ function GraphLegend({ languages }: { languages: string[] }) {
           {language}
         </span>
       ))}
-      <span style={{ color: 'rgba(246,244,238,0.52)' }}>size = fan in/out</span>
+      <span style={{ color: 'rgba(246,244,238,0.52)' }}>
+        {criticalMassEnabled ? 'size = critical mass' : 'compact size'}
+      </span>
     </div>
   );
 }
@@ -1039,6 +1058,28 @@ function GraphToggle({ value, onChange }: { value: GraphEdgeMode; onChange: (val
   );
 }
 
+function GraphMassToggle({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      title="Scale node size by fan-in plus fan-out"
+      aria-pressed={enabled}
+      style={{
+        height: 24,
+        border: `1px solid ${enabled ? 'rgba(125,227,255,0.48)' : 'rgba(255,255,255,0.14)'}`,
+        background: enabled ? 'rgba(125,227,255,0.18)' : 'rgba(255,255,255,0.06)',
+        color: enabled ? '#f6f4ee' : 'rgba(246,244,238,0.68)',
+        padding: '0 9px',
+        fontSize: 11,
+        fontWeight: 800,
+        cursor: 'pointer',
+      }}
+    >
+      Mass
+    </button>
+  );
+}
+
 function GraphToolButton({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
   return (
     <button
@@ -1085,11 +1126,12 @@ function buildDependencyGraphLayout(files: FileInventoryItem[]): {
     lobes: Array<{ offsetX: number; offsetY: number; radiusX: number; radiusY: number; opacity: number }>;
   }>;
   ambientStars: Array<{ x: number; y: number; r: number; opacity: number }>;
-  nodes: Array<{ file: FileInventoryItem; filePath: string; x: number; y: number; r: number }>;
+  nodes: DependencyGraphNode[];
   edges: Array<{ from: FileInventoryItem; to: FileInventoryItem; path: string }>;
   fileByPath: Map<string, FileInventoryItem>;
 } {
   const fileByPath = new Map(files.map((file) => [file.filePath, file]));
+  const maxCriticalMass = Math.max(1, ...files.map((file) => file.fanIn + file.fanOut));
   const directoryNames = [...new Set(files.map((file) => file.topLevelDirectory || '.'))].sort();
   const grouped = new Map<string, FileInventoryItem[]>();
 
@@ -1127,13 +1169,17 @@ function buildDependencyGraphLayout(files: FileInventoryItem[]): {
 
     for (const [indexInDirectory, file] of bucket.entries()) {
       const position = buildOrganicNodePosition(file.filePath, indexInDirectory, bucket.length, baseRadiusX, baseRadiusY, seed);
-      const weight = Math.min(8, file.fanIn + file.fanOut);
+      const criticalMass = file.fanIn + file.fanOut;
+      const compactWeight = Math.min(3, criticalMass);
+      const criticalScale = Math.sqrt(criticalMass) / Math.sqrt(maxCriticalMass);
       nodes.push({
         file,
         filePath: file.filePath,
         x: anchor.x + position.x,
         y: anchor.y + position.y,
-        r: 2.2 + Math.sqrt(weight + 1) * 0.85,
+        r: 2.6 + Math.sqrt(compactWeight + 1) * 0.48,
+        criticalR: 2.8 + criticalScale * 12.5,
+        criticalMass,
       });
     }
   }
@@ -1326,7 +1372,6 @@ function matchesQuickFilter(file: FileInventoryItem, filter: QuickFilter): boole
   if (filter === 'large') return file.loc >= 800;
   if (filter === 'fanIn') return file.fanIn >= 8;
   if (filter === 'fanOut') return file.fanOut >= 8;
-  if (filter === 'unresolved') return file.unresolvedImports.length > 0;
   return true;
 }
 
