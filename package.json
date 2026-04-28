@@ -2,7 +2,7 @@
   "name": "atlante",
   "displayName": "Atlante",
   "description": "Find the files your AI coding agent is silently bloating. Local, deterministic refactor triage.",
-  "version": "0.1.4",
+  "version": "0.1.7",
   "publisher": "OlexiyLysytsya",
   "icon": "resources/atlante-icon.png",
   "license": "MIT",

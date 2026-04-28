@@ -99,6 +99,7 @@ export function SourceInventoryPage({
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedGraphFilePath, setSelectedGraphFilePath] = useState<string | null>(null);
   const [hoveredGraphFilePath, setHoveredGraphFilePath] = useState<string | null>(null);
+  const [agentPromptCopied, setAgentPromptCopied] = useState(false);
 
   const languages = useMemo(
     () => inventory ? [...new Set(inventory.files.map((file) => file.language))].sort() : [],
@@ -140,6 +141,19 @@ export function SourceInventoryPage({
     }
     setSortBy(key);
     setSortDirection(key === 'path' || key === 'language' ? 'asc' : 'desc');
+  };
+
+  const handleCopyAgentPrompt = async () => {
+    if (!inventory || visibleFiles.length === 0) return;
+    const prompt = buildAgentPrompt(workspaceName, visibleFiles, {
+      language: languageFilter,
+      directory: directoryFilter,
+      quickFilter,
+      search,
+    });
+    await copyTextToClipboard(prompt);
+    setAgentPromptCopied(true);
+    window.setTimeout(() => setAgentPromptCopied(false), 1800);
   };
 
   return (
@@ -269,7 +283,12 @@ export function SourceInventoryPage({
           >
             {viewMode === 'table' ? (
               <>
-                <TableContextBar visibleCount={visibleFiles.length} totalCount={inventory.files.length} />
+                <TableContextBar
+                  visibleCount={visibleFiles.length}
+                  totalCount={inventory.files.length}
+                  copied={agentPromptCopied}
+                  onCopyPrompt={handleCopyAgentPrompt}
+                />
                 <div
                   style={{
                     display: 'grid',
@@ -478,7 +497,17 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
   );
 }
 
-function TableContextBar({ visibleCount, totalCount }: { visibleCount: number; totalCount: number }) {
+function TableContextBar({
+  visibleCount,
+  totalCount,
+  copied,
+  onCopyPrompt,
+}: {
+  visibleCount: number;
+  totalCount: number;
+  copied: boolean;
+  onCopyPrompt: () => void;
+}) {
   const filtered = visibleCount !== totalCount;
   return (
     <div
@@ -499,16 +528,35 @@ function TableContextBar({ visibleCount, totalCount }: { visibleCount: number; t
           Largest files first, with dependency signals
         </span>
       </div>
-      <span
-        style={{
-          flexShrink: 0,
-          color: ARCHLENS_THEME.textTertiary,
-          fontVariantNumeric: 'tabular-nums',
-          fontWeight: 700,
-        }}
-      >
-        {filtered ? `${visibleCount.toLocaleString()} of ${totalCount.toLocaleString()} files` : `${totalCount.toLocaleString()} files`}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <span
+          style={{
+            color: ARCHLENS_THEME.textTertiary,
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 700,
+          }}
+        >
+          {filtered ? `${visibleCount.toLocaleString()} of ${totalCount.toLocaleString()} files` : `${totalCount.toLocaleString()} files`}
+        </span>
+        <button
+          type="button"
+          onClick={onCopyPrompt}
+          disabled={visibleCount === 0}
+          title="Copy a refactor prompt for your coding agent"
+          style={{
+            border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+            background: copied ? '#edf7fa' : '#fff',
+            color: copied ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textSecondary,
+            padding: '5px 8px',
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: visibleCount === 0 ? 'not-allowed' : 'pointer',
+            opacity: visibleCount === 0 ? 0.55 : 1,
+          }}
+        >
+          {copied ? 'Copied' : 'Copy agent prompt'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1421,6 +1469,67 @@ function matchesQuickFilter(file: FileInventoryItem, filter: QuickFilter): boole
   if (filter === 'fanIn') return file.fanIn >= 8;
   if (filter === 'fanOut') return file.fanOut >= 8;
   return true;
+}
+
+function buildAgentPrompt(
+  workspaceName: string,
+  files: FileInventoryItem[],
+  filters: { language: string; directory: string; quickFilter: QuickFilter; search: string },
+): string {
+  const topFiles = files.slice(0, 10);
+  const activeFilters = [
+    filters.quickFilter !== 'all' ? `quick filter: ${quickFilterLabel(filters.quickFilter)}` : null,
+    filters.language !== 'all' ? `language: ${filters.language}` : null,
+    filters.directory !== 'all' ? `folder: ${filters.directory}` : null,
+    filters.search.trim() ? `search: ${filters.search.trim()}` : null,
+  ].filter(Boolean);
+  const filterLine = activeFilters.length > 0 ? `Active filters: ${activeFilters.join(', ')}\n\n` : '';
+  const targetList = topFiles.map((file, index) => [
+    `${index + 1}. ${basename(file.filePath)}`,
+    `   path: ${file.filePath}`,
+    `   language: ${file.language}`,
+    `   lines: ${file.loc.toLocaleString()}`,
+    `   imports: ${file.importCount}`,
+    `   exports: ${file.exportCount}`,
+    `   fan-in: ${file.fanIn}`,
+    `   fan-out: ${file.fanOut}`,
+  ].join('\n')).join('\n\n');
+
+  return [
+    `I am using Atlante to triage code bloat in "${workspaceName}".`,
+    '',
+    'Here are the top refactor targets from the current queue, sorted by lines of code with dependency signals beside them.',
+    '',
+    filterLine + targetList,
+    '',
+    'Please pick the next reasonable low-risk, high-value refactor target.',
+    'Explain why it is the right next move, what not to touch, and the first behavior-preserving extraction step.',
+    'Prefer small, boring refactors that reduce file size without changing runtime behavior.',
+  ].join('\n');
+}
+
+function quickFilterLabel(filter: QuickFilter): string {
+  if (filter === 'large') return 'Largest files';
+  if (filter === 'fanIn') return 'High fan-in';
+  if (filter === 'fanOut') return 'High fan-out';
+  return 'All files';
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
 }
 
 function basename(filePath: string): string {

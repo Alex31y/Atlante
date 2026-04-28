@@ -2,7 +2,7 @@
 
 **Turn code bloat into a refactor queue.**
 
-Your AI coding agent keeps adding code to the same handful of files. They grow past 2,000 lines, then past 4,000, then they stop fitting in context comfortably. Suddenly every refactor prompt fails, every edit takes three tries, and the agent starts inventing APIs that already exist two screens above.
+Your coding agent keeps adding code to the same handful of files. They grow past 2,000 lines, then past 4,000, then they stop fitting in context comfortably. Suddenly every refactor prompt fails, every edit takes three tries, and the agent starts inventing APIs that already exist two screens above.
 
 Atlante scans your workspace locally, without any LLM, and gives you a ranked refactor queue: biggest files first, with imports, exports, fan-in, and fan-out beside them. Screenshot the table, pass it to your coding agent, and start cleaning up the worst offenders.
 
@@ -37,6 +37,14 @@ Three principles, in order:
 6. Resume shipping.
 
 That's it. No AI in the loop, no cloud, no waiting. The analysis is serialized under `.atlante/` as diff-friendly JSON, so you can commit it and watch your repo's structural health over time.
+
+## Agent workflow
+
+Atlante gives your coding agent the map before you ask it to refactor.
+
+[![Coding agent refactor plan](https://github.com/Alex31y/Atlante/raw/main/docs/assets/agent-workflow.png)](/Alex31y/Atlante/blob/main/docs/assets/agent-workflow.png)
+
+Screenshot the refactor queue, paste it into your coding agent, and ask for the next low-risk, high-value extraction.
 
 ## What you get today
 
