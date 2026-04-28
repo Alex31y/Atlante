@@ -79,22 +79,22 @@ export const CLUSTER_PALETTE = [
 /** Atlante design language tokens */
 export const ARCHLENS_THEME = {
   // Backgrounds
-  canvasBg: '#FFFDF7',
+  canvasBg: '#f8fafb',
   cardBg: '#ffffff',
-  surfaceBg: '#f7f5f0',
+  surfaceBg: '#f3f6f8',
 
   // Text
-  textPrimary: '#3D3929',
-  textSecondary: '#6b6560',
-  textTertiary: '#9a9590',
+  textPrimary: '#20242a',
+  textSecondary: '#5f6670',
+  textTertiary: '#8a929c',
 
   // Borders
-  borderDefault: '#e5e2db',
-  borderSubtle: '#ede9e1',
+  borderDefault: '#dfe5ea',
+  borderSubtle: '#ebeff2',
 
   // Accents
-  accentPrimary: '#3D3929',
-  accentHover: '#2e2b1f',
+  accentPrimary: '#20242a',
+  accentHover: '#111827',
 
   // Status (UI chrome — not severity)
   statusSuccess: '#7a8c6e',

@@ -1,12 +1,14 @@
 # Atlante
 
-**Find the files your AI coding agent is silently bloating.**
+**Turn code bloat into a refactor queue.**
 
-Your agent keeps adding code to the same handful of files. They grow past 2,000 lines, then past 4,000, then they stop fitting in context comfortably. Suddenly every refactor prompt fails, every edit takes three tries, and the agent starts inventing APIs that already exist two screens above.
+Your AI coding agent keeps adding code to the same handful of files. They grow past 2,000 lines, then past 4,000, then they stop fitting in context comfortably. Suddenly every refactor prompt fails, every edit takes three tries, and the agent starts inventing APIs that already exist two screens above.
 
-Atlante scans your workspace locally, without any LLM, and tells you exactly which files to split **before** your next session becomes a dumpster fire. Not a graph to interpret. A ranked list of what matters, sorted.
+Atlante scans your workspace locally, without any LLM, and gives you a ranked refactor queue: biggest files first, with imports, exports, fan-in, and fan-out beside them. Screenshot the table, pass it to your coding agent, and start cleaning up the worst offenders.
 
-[![Dependency Constellation](https://github.com/Alex31y/Atlante/raw/main/docs/assets/graph.png)](/Alex31y/Atlante/blob/main/docs/assets/graph.png)
+Atlante gives your coding agent the map before you ask it to refactor.
+
+[![Source Inventory Table](https://github.com/Alex31y/Atlante/raw/main/docs/assets/table.png)](/Alex31y/Atlante/blob/main/docs/assets/table.png)
 
 ## Why this exists
 
@@ -23,28 +25,29 @@ Three principles, in order:
 
 1. **Deterministic.** Same input, same output. Always.
 2. **Local.** Nothing leaves your machine. No accounts, no uploads, no telemetry.
-3. **Prescriptive.** Not "here's a graph to interpret" but "these are the files that matter, sorted".
+3. **Prescriptive.** Not "here's a graph to interpret" but "these are the files that matter, ranked".
 
 ## The workflow
 
 1. You're deep in a Claude Code / Cursor / Aider session. Things feel slow. Edits start failing.
 2. Run **Analyze Workspace**.
-3. Sort by LOC. The top five files are your problem.
-4. Pick one, open the details drawer, see its fan-in and who imports it.
-5. Ask the agent to split it with that context. Resume shipping.
+3. Open the table. It is already sorted by lines of code, largest first.
+4. Screenshot the top files and dependency signals.
+5. Give that screenshot to your coding agent and ask it to split one offender with the surrounding context.
+6. Resume shipping.
 
 That's it. No AI in the loop, no cloud, no waiting. The analysis is serialized under `.atlante/` as diff-friendly JSON, so you can commit it and watch your repo's structural health over time.
 
 ## What you get today
 
-[![Source Inventory Table](https://github.com/Alex31y/Atlante/raw/main/docs/assets/table.png)](/Alex31y/Atlante/blob/main/docs/assets/table.png)
-
-- **Source inventory table.** Every file with LOC, imports, exports, fan-in, fan-out. Sortable, searchable, filterable.
-- **Quick filters.** *Large files*, *High fan-in*, *High fan-out*, *Unresolved imports*. One click, see what stands out.
+- **Refactor queue.** Every file ranked by lines of code, with imports, exports, fan-in, and fan-out. Sortable, searchable, filterable.
+- **Quick filters.** *Largest files*, *High fan-in*, *High fan-out*. One click, see what stands out.
 - **File details drawer.** Symbols, imports (resolved vs external vs unresolved), dependents, open-file action.
-- **Dependency Constellation.** Interactive graph of internal dependencies, clustered by top-level folder, with a focus mode to see only what connects to the selected file.
+- **Dependency Constellation.** Interactive graph of internal dependencies, clustered by top-level folder, with focus mode and impact-based node sizing.
 - **Project library.** Analyze multiple projects, switch between them from the sidebar.
 - **Persistent analysis.** Results stored under `.atlante/` in your workspace: stable JSON, diff-friendly, versionable.
+
+[![Dependency Constellation](https://github.com/Alex31y/Atlante/raw/main/docs/assets/graph.png)](/Alex31y/Atlante/blob/main/docs/assets/graph.png)
 
 Supported languages: JavaScript, TypeScript, Python via Tree-sitter AST; Java, C#, Go, Rust, Kotlin, Swift, Ruby, PHP via a generic/fallback parser.
 
@@ -69,16 +72,16 @@ npm run build
 npm run package
 ```
 
-Then in VS Code: **Extensions → ⋯ → Install from VSIX…** and pick the generated `atlante-*.vsix`.
+Then in VS Code: **Extensions -> ... -> Install from VSIX...** and pick the generated `atlante-*.vsix`.
 
 </details>
 
 ## Use
 
 1. Open any workspace.
-2. Command palette → **Atlante** (opens the panel).
+2. Command palette -> **Atlante** (opens the panel).
 3. Click **Analyze Workspace** in the sidebar.
-4. Explore: sort the table, flip to the graph, click rows for details.
+4. Use the ranked table as your refactor queue, then flip to the graph when you need the dependency shape.
 
 ## Commands
 
@@ -112,12 +115,12 @@ npm run package      # produce .vsix
 
 Repo layout:
 
-```
+```text
 src/
-├── extension/   # VS Code host (commands, providers, services, watchers)
-├── webview/     # React UI (inventory + graph)
-├── workers/     # Worker-thread Tree-sitter parsing
-└── shared/      # Types, constants, import resolver
++-- extension/   # VS Code host (commands, providers, services, watchers)
++-- webview/     # React UI (inventory + graph)
++-- workers/     # Worker-thread Tree-sitter parsing
++-- shared/      # Types, constants, import resolver
 ```
 
 ## Non-goals

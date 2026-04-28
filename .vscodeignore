@@ -7,6 +7,11 @@ docs/**
 
 *.vsix
 *.tsbuildinfo
+build-vsix.bat
+structural review before the next agent session.md
+.obsidian/**
+.claude/**
+.atlante/**
 tsconfig*.json
 .gitattributes
 .prettierignore

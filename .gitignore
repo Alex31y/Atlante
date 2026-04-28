@@ -12,3 +12,7 @@ coverage/
 .atlante/
 .claude/
 .code-checker/
+.obsidian/
+/docs/release/
+/build-vsix.bat
+structural review before the next agent session.md

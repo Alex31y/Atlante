@@ -92,8 +92,8 @@ export function SourceInventoryPage({
   const [search, setSearch] = useState('');
   const [languageFilter, setLanguageFilter] = useState('all');
   const [directoryFilter, setDirectoryFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<SortKey>('path');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortBy, setSortBy] = useState<SortKey>('loc');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedTableFilePath, setSelectedTableFilePath] = useState<string | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -129,7 +129,7 @@ export function SourceInventoryPage({
   const selectedTableFile = selectedTableFilePath && inventory
     ? inventory.files.find((file) => file.filePath === selectedTableFilePath) ?? null
     : null;
-  const tableGridColumns = 'minmax(320px, 3fr) 96px repeat(5, 78px)';
+  const tableGridColumns = '44px minmax(260px, 3fr) 96px 96px repeat(4, 76px)';
   const actionLabel = status === 'stale' ? 'Refresh' : 'Analyze';
   const actionHandler = status === 'stale' ? onRefresh : onAnalyze;
 
@@ -148,6 +148,7 @@ export function SourceInventoryPage({
         height: '100vh',
         background: ARCHLENS_THEME.canvasBg,
         color: ARCHLENS_THEME.textPrimary,
+        fontFamily: 'Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         padding: 16,
         overflow: 'hidden',
         boxSizing: 'border-box',
@@ -171,7 +172,9 @@ export function SourceInventoryPage({
           </h1>
           <div style={{ marginTop: 6, fontSize: 12, color: ARCHLENS_THEME.textSecondary }}>
             {inventory
-              ? `${inventory.summary.totalFiles.toLocaleString()} files · ${totalLoc.toLocaleString()} lines · inventory ${status === 'stale' ? 'stale' : 'ready'}`
+              ? viewMode === 'table'
+                ? `${inventory.summary.totalFiles.toLocaleString()} files / ${totalLoc.toLocaleString()} lines / refactor targets first`
+                : `${inventory.summary.totalFiles.toLocaleString()} files / ${totalLoc.toLocaleString()} lines / dependency map ready`
               : 'Deterministic source inventory. No external calls.'}
           </div>
         </div>
@@ -226,6 +229,7 @@ export function SourceInventoryPage({
               padding: 8,
               border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
               background: ARCHLENS_THEME.surfaceBg,
+              borderRadius: 4,
             }}
           >
             <input
@@ -256,6 +260,7 @@ export function SourceInventoryPage({
               minHeight: 0,
               background: ARCHLENS_THEME.cardBg,
               border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+              borderRadius: 4,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -264,6 +269,7 @@ export function SourceInventoryPage({
           >
             {viewMode === 'table' ? (
               <>
+                <TableContextBar visibleCount={visibleFiles.length} totalCount={inventory.files.length} />
                 <div
                   style={{
                     display: 'grid',
@@ -277,9 +283,10 @@ export function SourceInventoryPage({
                     background: ARCHLENS_THEME.surfaceBg,
                   }}
                 >
+                  <div style={{ textAlign: 'right' }}>#</div>
                   <HeaderCell label="File" sortKey="path" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <HeaderCell label="Language" sortKey="language" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <HeaderCell label="Lines" sortKey="loc" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                  <HeaderCell label="Lines" sortKey="loc" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} featured />
                   <HeaderCell label="Imports" sortKey="imports" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <HeaderCell label="Exports" sortKey="exports" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <HeaderCell label="Fan In" sortKey="fanIn" sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -287,8 +294,10 @@ export function SourceInventoryPage({
                 </div>
 
                 <div style={{ flex: 1, minHeight: 0, overflow: 'auto', position: 'relative' }}>
-                  {visibleFiles.map((file) => {
+                  {visibleFiles.map((file, index) => {
                     const selected = selectedTableFilePath === file.filePath;
+                    const rank = index + 1;
+                    const rankedByLines = sortBy === 'loc' && sortDirection === 'desc';
                     return (
                       <button
                         key={file.filePath}
@@ -299,19 +308,21 @@ export function SourceInventoryPage({
                           gridTemplateColumns: tableGridColumns,
                           gap: 10,
                           alignItems: 'center',
-                          padding: '9px 12px',
+                          padding: '10px 12px',
                           border: 'none',
                           borderBottom: `1px solid ${ARCHLENS_THEME.borderSubtle}`,
-                          background: selected ? '#f6f4ee' : ARCHLENS_THEME.cardBg,
+                          background: selected ? '#eef6f8' : rankedByLines && rank <= 3 ? '#fbfcf8' : ARCHLENS_THEME.cardBg,
+                          boxShadow: rankedByLines && rank <= 3 ? 'inset 3px 0 0 #66c7d8' : undefined,
                           color: ARCHLENS_THEME.textPrimary,
                           textAlign: 'left',
                           cursor: 'pointer',
                           fontSize: 12,
                         }}
                       >
+                        <RankCell rank={rank} highlight={rankedByLines && rank <= 10} />
                         <FileNameCell filePath={file.filePath} />
                         <LanguageBadge language={file.language} />
-                        <NumberCell value={file.loc} />
+                        <NumberCell value={file.loc} featured />
                         <NumberCell value={file.importCount} />
                         <NumberCell value={file.exportCount} />
                         <NumberCell value={file.fanIn} />
@@ -396,14 +407,14 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function QuickFilterBar({ value, onChange }: { value: QuickFilter; onChange: (value: QuickFilter) => void }) {
   const filters: Array<{ key: QuickFilter; label: string }> = [
     { key: 'all', label: 'All files' },
-    { key: 'large', label: 'Large files' },
+    { key: 'large', label: 'Largest files' },
     { key: 'fanIn', label: 'High fan-in' },
     { key: 'fanOut', label: 'High fan-out' },
   ];
   // TODO: Restore unresolved-import surfacing once path aliases and package resolution stop producing noisy false positives.
 
   return (
-    <section style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flexShrink: 0 }}>
+    <section style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
       {filters.map((filter) => {
         const active = value === filter.key;
         return (
@@ -411,10 +422,10 @@ function QuickFilterBar({ value, onChange }: { value: QuickFilter; onChange: (va
             key={filter.key}
             onClick={() => onChange(filter.key)}
             style={{
-              border: `1px solid ${active ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.borderDefault}`,
-              background: active ? '#efede6' : ARCHLENS_THEME.cardBg,
+              border: `1px solid ${active ? ARCHLENS_THEME.accentPrimary : ARCHLENS_THEME.borderDefault}`,
+              background: active ? '#edf7fa' : ARCHLENS_THEME.cardBg,
               color: active ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textSecondary,
-              padding: '5px 8px',
+              padding: '6px 9px',
               fontSize: 11,
               fontWeight: 800,
               cursor: 'pointer',
@@ -437,6 +448,8 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
         border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
         background: '#fff',
         minHeight: 38,
+        borderRadius: 4,
+        overflow: 'hidden',
       }}
     >
       {(['table', 'graph'] as const).map((mode) => {
@@ -450,7 +463,7 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
             style={{
               border: 'none',
               borderRight: mode === 'table' ? `1px solid ${ARCHLENS_THEME.borderDefault}` : 'none',
-              background: active ? ARCHLENS_THEME.textPrimary : '#fff',
+              background: active ? ARCHLENS_THEME.accentPrimary : '#fff',
               color: active ? '#fff' : ARCHLENS_THEME.textSecondary,
               fontSize: 12,
               fontWeight: 700,
@@ -461,6 +474,41 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function TableContextBar({ visibleCount, totalCount }: { visibleCount: number; totalCount: number }) {
+  const filtered = visibleCount !== totalCount;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '9px 12px',
+        borderBottom: `1px solid ${ARCHLENS_THEME.borderSubtle}`,
+        background: '#fbfcfd',
+        fontSize: 12,
+      }}
+    >
+      <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 12, color: ARCHLENS_THEME.textPrimary }}>Refactor queue</strong>
+        <span style={{ color: ARCHLENS_THEME.textSecondary }}>
+          Largest files first, with dependency signals
+        </span>
+      </div>
+      <span
+        style={{
+          flexShrink: 0,
+          color: ARCHLENS_THEME.textTertiary,
+          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 700,
+        }}
+      >
+        {filtered ? `${visibleCount.toLocaleString()} of ${totalCount.toLocaleString()} files` : `${totalCount.toLocaleString()} files`}
+      </span>
     </div>
   );
 }
@@ -726,7 +774,7 @@ function DependencyGraphView({
               <GraphPill label="Showing" value={`${GRAPH_NODE_LIMIT.toLocaleString()} of ${files.length.toLocaleString()}`} />
             )}
             <GraphToggle value={edgeMode} onChange={setEdgeMode} />
-            <GraphMassToggle enabled={criticalMassEnabled} onChange={setCriticalMassEnabled} />
+            <GraphImpactToggle enabled={criticalMassEnabled} onChange={setCriticalMassEnabled} />
             <GraphToolButton label="-" title="Zoom out" onClick={() => zoomByButton(0.82)} />
             <GraphToolButton label="+" title="Zoom in" onClick={() => zoomByButton(1.18)} />
             <GraphToolButton label="Fit" title="Fit graph" onClick={resetViewport} />
@@ -846,7 +894,7 @@ function DependencyGraphView({
                 onMouseLeave={() => onHoverFile(null)}
                 style={{ cursor: 'pointer' }}
               >
-                <title>{`${node.filePath}\nCritical mass: ${node.criticalMass} (${node.file.fanIn} in / ${node.file.fanOut} out)`}</title>
+                <title>{`${node.filePath}\nDependency impact: ${node.criticalMass} (${node.file.fanIn} in / ${node.file.fanOut} out)`}</title>
                 <circle
                   cx={node.x}
                   cy={node.y}
@@ -993,7 +1041,7 @@ function GraphLegend({
         </span>
       ))}
       <span style={{ color: 'rgba(246,244,238,0.52)' }}>
-        {criticalMassEnabled ? 'size = critical mass' : 'compact size'}
+        {criticalMassEnabled ? 'size = dependency impact' : 'uniform size'}
       </span>
     </div>
   );
@@ -1058,11 +1106,11 @@ function GraphToggle({ value, onChange }: { value: GraphEdgeMode; onChange: (val
   );
 }
 
-function GraphMassToggle({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
+function GraphImpactToggle({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!enabled)}
-      title="Scale node size by fan-in plus fan-out"
+      title="Scale nodes by dependency importance"
       aria-pressed={enabled}
       style={{
         height: 24,
@@ -1075,7 +1123,7 @@ function GraphMassToggle({ enabled, onChange }: { enabled: boolean; onChange: (e
         cursor: 'pointer',
       }}
     >
-      Mass
+      Impact
     </button>
   );
 }
@@ -1401,12 +1449,14 @@ function HeaderCell({
   sortBy,
   sortDirection,
   onSort,
+  featured = false,
 }: {
   label: string;
   sortKey: SortKey;
   sortBy: SortKey;
   sortDirection: SortDirection;
   onSort: (sortKey: SortKey) => void;
+  featured?: boolean;
 }) {
   const active = sortBy === sortKey;
   return (
@@ -1415,9 +1465,9 @@ function HeaderCell({
       style={{
         border: 'none',
         background: 'transparent',
-        color: active ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textTertiary,
+        color: active || featured ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textTertiary,
         font: 'inherit',
-        fontWeight: 700,
+        fontWeight: active || featured ? 800 : 700,
         textAlign: sortKey === 'path' || sortKey === 'language' ? 'left' : 'right',
         cursor: 'pointer',
         padding: 0,
@@ -1428,9 +1478,39 @@ function HeaderCell({
   );
 }
 
-function NumberCell({ value }: { value: number }) {
+function RankCell({ rank, highlight }: { rank: number; highlight: boolean }) {
   return (
-    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+    <span
+      style={{
+        justifySelf: 'end',
+        width: 24,
+        height: 22,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 999,
+        background: highlight ? '#e3f4f8' : 'transparent',
+        color: highlight ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textTertiary,
+        fontSize: 11,
+        fontWeight: 800,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {rank}
+    </span>
+  );
+}
+
+function NumberCell({ value, featured = false }: { value: number; featured?: boolean }) {
+  return (
+    <span
+      style={{
+        textAlign: 'right',
+        fontVariantNumeric: 'tabular-nums',
+        color: featured ? ARCHLENS_THEME.textPrimary : 'inherit',
+        fontWeight: featured ? 850 : 500,
+      }}
+    >
       {value.toLocaleString()}
     </span>
   );
