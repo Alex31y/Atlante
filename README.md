@@ -4,7 +4,7 @@
 
 Your coding agent keeps adding code to the same handful of files. They grow past 2,000 lines, then past 4,000, then they stop fitting in context comfortably. Suddenly every refactor prompt fails, every edit takes three tries, and the agent starts inventing APIs that already exist two screens above.
 
-Atlante scans your workspace locally, without any LLM, and gives you a ranked refactor queue: biggest files first, with imports, exports, fan-in, and fan-out beside them. Screenshot the table, pass it to your coding agent, and start cleaning up the worst offenders.
+Atlante scans your workspace locally, without any LLM, and gives you a ranked refactor queue: biggest files first, with imports, exports, fan-in, and fan-out beside them. Click Copy Agent Prompt, paste it into your coding agent, and start cleaning up the worst offenders.
 
 Atlante gives your coding agent the map before you ask it to refactor.
 
