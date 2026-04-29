@@ -56,7 +56,7 @@ Click Copy Agent Prompt, paste into your coding agent, ask for the next low-risk
 - **Project library.** Analyze multiple projects, switch between them from the sidebar.
 - **Persistent analysis.** Results stored under `.atlante/` in your workspace: stable JSON, diff-friendly, versionable.
 
-[![Dependency Constellation](https://github.com/Alex31y/Atlante/raw/main/docs/assets/graph.png)](/Alex31y/Atlante/blob/main/docs/assets/graph.png)
+[![Dependency Constellation](https://github.com/Alex31y/Atlante/raw/main/docs/assets/costellation.png)](/Alex31y/Atlante/blob/main/docs/assets/costellation.png)
 
 Supported languages: JavaScript, TypeScript, Python via Tree-sitter AST; Java, C#, Go, Rust, Kotlin, Swift, Ruby, PHP via a generic/fallback parser.
 
