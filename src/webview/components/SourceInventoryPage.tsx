@@ -1092,18 +1092,13 @@ function DependencyGraphView({
             display: 'block',
             background: '#111315',
             touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           <defs>
             <filter id="codeCheckerNebulaBlur">
               <feGaussianBlur stdDeviation="28" />
-            </filter>
-            <filter id="codeCheckerStarGlow">
-              <feGaussianBlur stdDeviation="2.8" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
             </filter>
           </defs>
           <rect
@@ -1162,6 +1157,8 @@ function DependencyGraphView({
               fontSize="12"
               fontWeight="700"
               fill="rgba(246,244,238,0.58)"
+              pointerEvents="none"
+              style={{ userSelect: 'none' }}
             >
               {truncateLabel(cluster.key, 24)}
             </text>
@@ -1189,32 +1186,8 @@ function DependencyGraphView({
                   stroke={selected ? '#7de3ff' : connected ? '#f2b95d' : 'rgba(255,255,255,0.62)'}
                   strokeWidth={selected ? 1.8 : connected ? 1.2 : 0.55}
                   opacity={dimmed ? 0.22 : 0.94}
-                  filter={selected || connected ? 'url(#codeCheckerStarGlow)' : undefined}
                 />
               </g>
-            );
-          })}
-          {activeFilePath && layout.nodes.map((node) => {
-            const selected = selectedFilePath === node.filePath;
-            const connected = connectedFilePaths.has(node.filePath);
-            if (!connected) return null;
-            const nodeRadius = criticalMassEnabled ? node.criticalR : node.r;
-            return (
-              <text
-                key={`${node.filePath}-label`}
-                x={node.x + nodeRadius + 7}
-                y={node.y - nodeRadius - 4}
-                fontSize={selected ? 8.5 : 8}
-                fontWeight={selected ? 700 : 500}
-                fill={selected ? 'rgba(246,244,238,0.82)' : 'rgba(246,244,238,0.42)'}
-                stroke="rgba(17,19,21,0.72)"
-                strokeWidth="1.4"
-                paintOrder="stroke"
-                opacity={selected ? 0.92 : 0.68}
-                pointerEvents="none"
-              >
-                {truncateLabel(basename(node.filePath), selected ? 26 : 18)}
-              </text>
             );
           })}
           </g>
@@ -1330,9 +1303,7 @@ function GraphFilePanel({
             Open File
           </button>
           <div style={{ height: 16 }} />
-          <GraphDetailGroup title="Resolved Dependencies" values={file.resolvedDependencies} empty="No internal dependencies" />
-          <div style={{ height: 14 }} />
-          <GraphDetailGroup title="Dependents" values={file.dependents} empty="No dependents" />
+          <GraphRelatedFiles inputs={file.dependents} outputs={file.resolvedDependencies} />
     </aside>
   );
 }
@@ -1346,36 +1317,73 @@ function GraphMiniMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function GraphDetailGroup({ title, values, empty }: { title: string; values: string[]; empty: string }) {
+function GraphRelatedFiles({ inputs, outputs }: { inputs: string[]; outputs: string[] }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(246,244,238,0.48)', marginBottom: 6 }}>
-        {title}
+      <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(246,244,238,0.48)', marginBottom: 8 }}>
+        Related files
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {values.length > 0 ? values.slice(0, 24).map((value) => (
-          <span
+      <GraphRelatedList title="Inputs" values={inputs} empty="No incoming files" />
+      <div style={{ height: 12 }} />
+      <GraphRelatedList title="Outputs" values={outputs} empty="No outgoing files" />
+    </div>
+  );
+}
+
+function GraphRelatedList({ title, values, empty }: { title: string; values: string[]; empty: string }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 44px',
+          gap: 8,
+          padding: '6px 8px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: values.length > 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,255,255,0.035)',
+          color: 'rgba(246,244,238,0.52)',
+          fontSize: 11,
+          fontWeight: 800,
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{values.length.toLocaleString()}</span>
+      </div>
+      <div>
+        {values.length > 0 ? values.slice(0, 24).map((value, index) => (
+          <div
             key={value}
             style={{
-              maxWidth: '100%',
-              border: '1px solid rgba(125,227,255,0.18)',
-              background: 'rgba(125,227,255,0.07)',
-              padding: '4px 7px',
-              borderRadius: 2,
+              display: 'grid',
+              gridTemplateColumns: '22px minmax(0, 1fr)',
+              gap: 7,
+              alignItems: 'center',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: index === Math.min(values.length, 24) - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+              background: 'rgba(17,19,21,0.34)',
+              padding: '6px 8px',
               fontSize: 11,
               color: 'rgba(246,244,238,0.76)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
             }}
           >
-            {value}
-          </span>
+            <span style={{ color: 'rgba(246,244,238,0.34)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+          </div>
         )) : (
-          <span style={{ fontSize: 12, color: 'rgba(246,244,238,0.42)' }}>{empty}</span>
+          <div
+            style={{
+              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '7px 8px',
+              fontSize: 12,
+              color: 'rgba(246,244,238,0.42)',
+            }}
+          >
+            {empty}
+          </div>
         )}
         {values.length > 24 && (
-          <span style={{ fontSize: 11, color: 'rgba(246,244,238,0.42)' }}>+{values.length - 24} more</span>
+          <div style={{ padding: '6px 8px', fontSize: 11, color: 'rgba(246,244,238,0.42)' }}>+{values.length - 24} more</div>
         )}
       </div>
     </div>
