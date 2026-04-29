@@ -634,6 +634,7 @@ function DependencyGraphView({
   const [fullscreen, setFullscreen] = useState(false);
   const [edgeMode, setEdgeMode] = useState<GraphEdgeMode>('all');
   const [criticalMassEnabled, setCriticalMassEnabled] = useState(false);
+  const [rankPanelEnabled, setRankPanelEnabled] = useState(true);
   const [graphSearch, setGraphSearch] = useState('');
   const [graphSearchOpen, setGraphSearchOpen] = useState(false);
   const preferredNode = useMemo(() => pickPreferredGraphNode(layout.nodes, queueMode), [layout.nodes, queueMode]);
@@ -645,6 +646,10 @@ function DependencyGraphView({
       .sort((left, right) => compareGraphSearchMatches(left, right, query))
       .slice(0, 8);
   }, [graphSearch, layout.nodes]);
+  const mostConnectedNodes = useMemo(
+    () => [...layout.nodes].sort(compareNodeImpact).slice(0, 10),
+    [layout.nodes],
+  );
   const legendLanguages = useMemo(
     () => [...new Set(graphFiles.map((file) => file.language))].sort().slice(0, 5),
     [graphFiles],
@@ -887,6 +892,12 @@ function DependencyGraphView({
     selectAndFocusNode(node);
   };
 
+  const chooseRankedNode = (node: DependencyGraphNode) => {
+    setGraphSearch('');
+    setGraphSearchOpen(false);
+    selectAndFocusNode(node);
+  };
+
   const clearGraphSelection = () => {
     setGraphSearch('');
     setGraphSearchOpen(false);
@@ -1021,6 +1032,7 @@ function DependencyGraphView({
             )}
             <GraphToggle value={edgeMode} onChange={setEdgeMode} />
             <GraphImpactToggle enabled={criticalMassEnabled} onChange={setCriticalMassEnabled} />
+            <GraphRankToggle enabled={rankPanelEnabled} onChange={setRankPanelEnabled} />
             <GraphToolButton label="-" title="Zoom out" onClick={() => zoomByButton(0.82)} />
             <GraphToolButton label="+" title="Zoom in" onClick={() => zoomByButton(1.18)} />
             <GraphToolButton label="Fit" title="Fit graph" onClick={resetViewport} />
@@ -1032,6 +1044,13 @@ function DependencyGraphView({
           </div>
         </div>
         <div ref={canvasRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {rankPanelEnabled && (
+          <GraphNodeRankPanel
+            nodes={mostConnectedNodes}
+            selectedFilePath={selectedFilePath}
+            onSelect={chooseRankedNode}
+          />
+        )}
         {!selectedFilePath && graphSearch.trim().length === 0 && (
           <div
             style={{
@@ -1175,11 +1194,34 @@ function DependencyGraphView({
               </g>
             );
           })}
+          {activeFilePath && layout.nodes.map((node) => {
+            const selected = selectedFilePath === node.filePath;
+            const connected = connectedFilePaths.has(node.filePath);
+            if (!connected) return null;
+            const nodeRadius = criticalMassEnabled ? node.criticalR : node.r;
+            return (
+              <text
+                key={`${node.filePath}-label`}
+                x={node.x + nodeRadius + 7}
+                y={node.y - nodeRadius - 4}
+                fontSize={selected ? 8.5 : 8}
+                fontWeight={selected ? 700 : 500}
+                fill={selected ? 'rgba(246,244,238,0.82)' : 'rgba(246,244,238,0.42)'}
+                stroke="rgba(17,19,21,0.72)"
+                strokeWidth="1.4"
+                paintOrder="stroke"
+                opacity={selected ? 0.92 : 0.68}
+                pointerEvents="none"
+              >
+                {truncateLabel(basename(node.filePath), selected ? 26 : 18)}
+              </text>
+            );
+          })}
           </g>
         </svg>
         </div>
       </div>
-      {selectedFile && !fullscreen && (
+      {selectedFile && (
         <GraphFilePanel file={selectedFile} onOpenFile={onOpenFile} onClose={() => onSelectFile(null)} />
       )}
     </div>
@@ -1197,6 +1239,7 @@ function GraphFilePanel({
 }) {
   return (
     <aside
+      className="atlante-graph-file-panel"
       style={{
         position: 'absolute',
         top: 56,
@@ -1206,14 +1249,37 @@ function GraphFilePanel({
         maxWidth: 'calc(100% - 32px)',
         overflow: 'auto',
         padding: 14,
-        background: '#fcfbf8',
-        border: `1px solid ${ATLANTE_THEME.borderDefault}`,
-        boxShadow: '0 18px 42px rgba(0,0,0,0.24)',
+        background: 'rgba(17,19,21,0.9)',
+        border: '1px solid rgba(255,255,255,0.13)',
+        boxShadow: '0 18px 42px rgba(0,0,0,0.36)',
+        color: '#f6f4ee',
+        scrollbarColor: 'rgba(125,227,255,0.42) rgba(255,255,255,0.04)',
+        scrollbarWidth: 'thin',
         zIndex: 3,
       }}
     >
+      <style>
+        {`
+          .atlante-graph-file-panel::-webkit-scrollbar {
+            width: 7px;
+          }
+
+          .atlante-graph-file-panel::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.035);
+          }
+
+          .atlante-graph-file-panel::-webkit-scrollbar-thumb {
+            background: rgba(125,227,255,0.34);
+            border-radius: 999px;
+          }
+
+          .atlante-graph-file-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(125,227,255,0.52);
+          }
+        `}
+      </style>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-          <div style={{ fontSize: 11, color: ATLANTE_THEME.textTertiary, fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'rgba(246,244,238,0.48)', fontWeight: 800, marginBottom: 8 }}>
             SELECTED FILE
           </div>
           <button
@@ -1222,9 +1288,9 @@ function GraphFilePanel({
             style={{
               width: 26,
               height: 24,
-              border: `1px solid ${ATLANTE_THEME.borderDefault}`,
-              background: '#fff',
-              color: ATLANTE_THEME.textSecondary,
+              border: '1px solid rgba(255,255,255,0.14)',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(246,244,238,0.72)',
               fontWeight: 800,
               cursor: 'pointer',
             }}
@@ -1243,19 +1309,76 @@ function GraphFilePanel({
               margin: '14px 0',
             }}
           >
-            <MiniMetric label="Lines" value={file.loc} />
-            <MiniMetric label="Fan In" value={file.fanIn} />
-            <MiniMetric label="Fan Out" value={file.fanOut} />
-            <MiniMetric label="Imports" value={file.importCount} />
+            <GraphMiniMetric label="Lines" value={file.loc} />
+            <GraphMiniMetric label="Fan In" value={file.fanIn} />
+            <GraphMiniMetric label="Fan Out" value={file.fanOut} />
+            <GraphMiniMetric label="Imports" value={file.importCount} />
           </div>
-          <button onClick={() => onOpenFile(file.filePath)} style={secondaryButtonStyle}>
+          <button
+            onClick={() => onOpenFile(file.filePath)}
+            style={{
+              border: '1px solid rgba(255,255,255,0.16)',
+              borderRadius: 2,
+              padding: '10px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              background: 'rgba(255,255,255,0.07)',
+              color: '#f6f4ee',
+              cursor: 'pointer',
+            }}
+          >
             Open File
           </button>
           <div style={{ height: 16 }} />
-          <DetailGroup title="Resolved Dependencies" values={file.resolvedDependencies} empty="No internal dependencies" />
+          <GraphDetailGroup title="Resolved Dependencies" values={file.resolvedDependencies} empty="No internal dependencies" />
           <div style={{ height: 14 }} />
-          <DetailGroup title="Dependents" values={file.dependents} empty="No dependents" />
+          <GraphDetailGroup title="Dependents" values={file.dependents} empty="No dependents" />
     </aside>
+  );
+}
+
+function GraphMiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.045)', padding: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(246,244,238,0.48)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#f6f4ee' }}>{value.toLocaleString()}</div>
+    </div>
+  );
+}
+
+function GraphDetailGroup({ title, values, empty }: { title: string; values: string[]; empty: string }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(246,244,238,0.48)', marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {values.length > 0 ? values.slice(0, 24).map((value) => (
+          <span
+            key={value}
+            style={{
+              maxWidth: '100%',
+              border: '1px solid rgba(125,227,255,0.18)',
+              background: 'rgba(125,227,255,0.07)',
+              padding: '4px 7px',
+              borderRadius: 2,
+              fontSize: 11,
+              color: 'rgba(246,244,238,0.76)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {value}
+          </span>
+        )) : (
+          <span style={{ fontSize: 12, color: 'rgba(246,244,238,0.42)' }}>{empty}</span>
+        )}
+        {values.length > 24 && (
+          <span style={{ fontSize: 11, color: 'rgba(246,244,238,0.42)' }}>+{values.length - 24} more</span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1333,6 +1456,85 @@ function GraphPill({ label, value }: { label: string; value: string }) {
       <span style={{ color: 'rgba(246,244,238,0.48)' }}>{label}</span>
       <span>{value}</span>
     </span>
+  );
+}
+
+function GraphNodeRankPanel({
+  nodes,
+  selectedFilePath,
+  onSelect,
+}: {
+  nodes: DependencyGraphNode[];
+  selectedFilePath: string | null;
+  onSelect: (node: DependencyGraphNode) => void;
+}) {
+  if (nodes.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 14,
+        left: 12,
+        zIndex: 2,
+        width: 360,
+        maxWidth: 'min(360px, 44vw)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        background: 'rgba(17,19,21,0.78)',
+        boxShadow: '0 12px 28px rgba(0,0,0,0.26)',
+        color: 'rgba(246,244,238,0.82)',
+        fontSize: 11,
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '24px minmax(0, 1fr) 48px',
+          gap: 8,
+          padding: '7px 9px',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          color: 'rgba(246,244,238,0.54)',
+          fontWeight: 800,
+        }}
+      >
+        <span>#</span>
+        <span>Most connected</span>
+        <span style={{ textAlign: 'right' }}>Links</span>
+      </div>
+      {nodes.map((node, index) => {
+        const selected = selectedFilePath === node.filePath;
+        return (
+          <button
+            key={node.filePath}
+            type="button"
+            onClick={() => onSelect(node)}
+            title={node.filePath}
+            style={{
+              width: '100%',
+              display: 'grid',
+              gridTemplateColumns: '24px minmax(0, 1fr) 48px',
+              gap: 8,
+              alignItems: 'center',
+              border: 'none',
+              borderBottom: index === nodes.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.06)',
+              background: selected ? 'rgba(125,227,255,0.16)' : 'transparent',
+              color: selected ? '#f6f4ee' : 'rgba(246,244,238,0.78)',
+              padding: '7px 9px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ color: 'rgba(246,244,238,0.42)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selected ? 800 : 700 }}>
+              {basename(node.filePath)}
+            </span>
+            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: selected ? '#f6f4ee' : 'rgba(246,244,238,0.54)' }}>
+              {node.criticalMass.toLocaleString()}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1455,6 +1657,28 @@ function GraphImpactToggle({ enabled, onChange }: { enabled: boolean; onChange: 
       }}
     >
       Impact
+    </button>
+  );
+}
+
+function GraphRankToggle({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      title="Show most connected files"
+      aria-pressed={enabled}
+      style={{
+        height: 24,
+        border: `1px solid ${enabled ? 'rgba(125,227,255,0.48)' : 'rgba(255,255,255,0.14)'}`,
+        background: enabled ? 'rgba(125,227,255,0.18)' : 'rgba(255,255,255,0.06)',
+        color: enabled ? '#f6f4ee' : 'rgba(246,244,238,0.68)',
+        padding: '0 9px',
+        fontSize: 11,
+        fontWeight: 800,
+        cursor: 'pointer',
+      }}
+    >
+      Rank
     </button>
   );
 }

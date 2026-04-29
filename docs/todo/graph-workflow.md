@@ -62,6 +62,18 @@ Planned behavior:
 4. The viewport moves to the new node.
 5. Escape closes suggestions first, then clears active search text, then can clear selection if already idle.
 
+## Most connected ranking
+
+Add a compact ranking inside the graph surface for the files with the highest fan-in plus fan-out. This gives the user a useful starting point even when they do not know which file to search for.
+
+Planned behavior:
+
+1. Show the top connected files in a small panel inside the graph.
+2. Clicking a row selects and centers the matching node.
+3. The ranking should not filter the graph.
+4. The selected row should reflect the active graph focus.
+5. The ranking panel should be toggleable from the graph header.
+
 ## Queue mode labels
 
 These controls should change ordering, not membership. They are queue modes: every file remains available unless the user applies language, folder, or text search constraints.
@@ -83,3 +95,4 @@ This is secondary to the graph onboarding and search work. The main product impr
 3. The details panel opens from search selection exactly as it does from node click.
 4. The graph does not jump, collapse, or lose context while typing.
 5. Queue modes reorder the graph and table queues without filtering files out.
+6. The most connected ranking is toggleable and selects nodes without changing graph membership.
