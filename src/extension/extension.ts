@@ -142,7 +142,7 @@ function wirePanelCallbacks(panel: DiagramPanelProvider): void {
       openLabel: 'Open Project',
     });
     if (uris?.[0]) {
-      vscode.commands.executeCommand('archlens.switchProject', uris[0]);
+      vscode.commands.executeCommand('atlante.switchProject', uris[0]);
     }
   };
   panel.onDisposeCallback = () => {
@@ -247,7 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
     logDebug(`[sidebar] ${message}`, details);
   };
 
-  const showDiagramCmd = vscode.commands.registerCommand('archlens.showDiagram', () => {
+  const showDiagramCmd = vscode.commands.registerCommand('atlante.showDiagram', () => {
     const root = getActiveRoot();
     if (!root) {
       vscode.window.showWarningMessage('Atlante: No workspace folder open.');
@@ -259,7 +259,7 @@ export function activate(context: vscode.ExtensionContext) {
     ensurePanelSession(context, root);
   });
 
-  const analyzeCmd = vscode.commands.registerCommand('archlens.analyzeWorkspace', async () => {
+  const analyzeCmd = vscode.commands.registerCommand('atlante.analyzeWorkspace', async () => {
     const root = getActiveRoot();
     if (!root) {
       vscode.window.showWarningMessage('Atlante: No workspace folder open.');
@@ -287,12 +287,12 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const refreshCmd = vscode.commands.registerCommand('archlens.refreshDiagram', () => {
+  const refreshCmd = vscode.commands.registerCommand('atlante.refreshDiagram', () => {
     logDebug('Refresh command invoked.');
-    void vscode.commands.executeCommand('archlens.analyzeWorkspace');
+    void vscode.commands.executeCommand('atlante.analyzeWorkspace');
   });
 
-  const switchProjectCmd = vscode.commands.registerCommand('archlens.switchProject', async (folderUri?: vscode.Uri) => {
+  const switchProjectCmd = vscode.commands.registerCommand('atlante.switchProject', async (folderUri?: vscode.Uri) => {
     let targetUri = folderUri;
     if (!targetUri && registry) {
       const projects = registry.getAll();
@@ -331,7 +331,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const removeProjectCmd = vscode.commands.registerCommand('archlens.removeProject', async (fsPath: string) => {
+  const removeProjectCmd = vscode.commands.registerCommand('atlante.removeProject', async (fsPath: string) => {
     if (!registry) {
       logDebug('Remove project skipped because registry service is missing.', undefined, 'warn');
       return;

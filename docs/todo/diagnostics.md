@@ -1,4 +1,4 @@
-# Diagnostics — Refactor Triage for Vibe Coders
+# Diagnostics - Refactor Triage for Vibe Coders
 
 ## Positioning
 
@@ -11,7 +11,7 @@ Il differenziatore vs CodeViz / CodeVisualizer / Dependency Cruiser è esattamen
 
 Tutto resta locale e deterministico. Nessun LLM, nessuna chiamata di rete.
 
-Fonte principale di ispirazione: il modulo `checks.py` del progetto predecessore ArchLensAI (vedi `docs/reference/data-inventory.md` in quel repo).
+Fonte principale di ispirazione: il modulo `checks.py` del progetto predecessore (vedi `docs/reference/data-inventory.md` in quel repo).
 
 ---
 
@@ -35,8 +35,8 @@ type FileDiagnostic = {
 
 Posizioni nel payload:
 
-- `FileInventoryItem.diagnostics[]` — check a livello di file
-- `FileInventoryPayload.diagnostics[]` — check a livello di payload (es. `dir-cycle`)
+- `FileInventoryItem.diagnostics[]` - check a livello di file
+- `FileInventoryPayload.diagnostics[]` - check a livello di payload (es. `dir-cycle`)
 
 Aggregato per la UI:
 
@@ -49,16 +49,16 @@ Aggregato per la UI:
 
 Priorità in ordine di ROI per l'utente target.
 
-### Tier 1 — red flag ad alto impatto
+### Tier 1 - red flag ad alto impatto
 
 | Kind | Severity | Regola | Dati richiesti | Note |
 |------|----------|--------|----------------|------|
 | `god-file` | warning | LOC > 500 AND functions > 15 AND fan_out > 8 | `loc`, `function_count`, `fan_out` | **il caso d'uso dei "3000 righe"** |
 | `giant-function` | warning | funzione con > 100 righe | `FunctionNode.start_line/end_line` | richiede linee precise nel mapper |
 | `hub-file` | warning | `fan_in > max(6, 2 * media progetto)` | `fan_in` | minimo assoluto 6 per evitare falsi positivi su progetti piccoli |
-| `file-cycle` | error | ciclo di import tra file, lunghezza ≤ 4 | grafo `resolvedDependencies`, DFS | cicli lunghi sono composizioni dei corti — non duplicare |
+| `file-cycle` | error | ciclo di import tra file, lunghezza ≤ 4 | grafo `resolvedDependencies`, DFS | cicli lunghi sono composizioni dei corti - non duplicare |
 
-### Tier 2 — dead code (l'AI ne produce tanto)
+### Tier 2 - dead code (l'AI ne produce tanto)
 
 | Kind | Severity | Regola | Dati richiesti |
 |------|----------|--------|----------------|
@@ -67,7 +67,7 @@ Priorità in ordine di ROI per l'utente target.
 | `dead-export` | info | simbolo esportato mai importato altrove e non usato localmente | cross-file import map + `used_names` |
 | `orphan-file` | info | `fan_in == 0` (mai importato) | `fan_in`, `fan_out` |
 
-### Tier 3 — smell e violazioni strutturali
+### Tier 3 - smell e violazioni strutturali
 
 | Kind | Severity | Regola | Dati richiesti |
 |------|----------|--------|----------------|
@@ -81,7 +81,7 @@ Priorità in ordine di ROI per l'utente target.
 
 ## Soppressione falsi positivi
 
-Regole da portare dal prior art — tutte necessarie per non generare rumore:
+Regole da portare dal prior art - tutte necessarie per non generare rumore:
 
 - `unused-import`: skip `__future__`, `import *`, side-effect imports TS/JS (`import './polyfill'`)
 - `dead-symbol`: skip dunder methods, metodi dentro classi, nomi `_prefixed`
@@ -104,7 +104,7 @@ Tutti gli identifier referenziati nel corpo del file (escluse le dichiarazioni d
 
 - [typescript-mapper](../../src/workers/mappers/typescript-mapper.ts): Tree-sitter query su `identifier` + `property_identifier` + `type_identifier`, escludendo i nodi dentro `import_statement`.
 - [python-mapper](../../src/workers/mappers/python-mapper.ts): Tree-sitter query su `identifier` + `attribute`, escludendo `import_statement` e `import_from_statement`.
-- mapper generici / fallback: skip — questi check non partono per quei linguaggi.
+- mapper generici / fallback: skip - questi check non partono per quei linguaggi.
 
 ### `call_sites: CallSite[]` (opzionale, Tier futuro)
 
@@ -128,14 +128,14 @@ type CallSite = {
 
 Aggiungere in `package.json` → `contributes.configuration`:
 
-- `archlens.thresholds.godFileLoc` (default: 500)
-- `archlens.thresholds.godFileFunctions` (default: 15)
-- `archlens.thresholds.godFileFanOut` (default: 8)
-- `archlens.thresholds.giantFunctionLines` (default: 100)
-- `archlens.thresholds.hubFileFanIn` (default: 6)
-- `archlens.thresholds.importSprawlFanOut` (default: 10)
-- `archlens.diagnostics.enabled` (default: `true`)
-- `archlens.diagnostics.disabledKinds` (default: `[]`) — per spegnere singoli check
+- `atlante.thresholds.godFileLoc` (default: 500)
+- `atlante.thresholds.godFileFunctions` (default: 15)
+- `atlante.thresholds.godFileFanOut` (default: 8)
+- `atlante.thresholds.giantFunctionLines` (default: 100)
+- `atlante.thresholds.hubFileFanIn` (default: 6)
+- `atlante.thresholds.importSprawlFanOut` (default: 10)
+- `atlante.diagnostics.enabled` (default: `true`)
+- `atlante.diagnostics.disabledKinds` (default: `[]`) - per spegnere singoli check
 
 ### `.atlante/rules.json` per `layer-violation`
 
@@ -171,7 +171,7 @@ Ogni check è una funzione pura `(payload, structures, config) => FileDiagnostic
 
 ---
 
-## UI — cosa cambia nel webview
+## UI - cosa cambia nel webview
 
 Modifiche a [SourceInventoryPage.tsx](../../src/webview/components/SourceInventoryPage.tsx):
 
@@ -183,7 +183,7 @@ Per ogni riga: 🔴 N · 🟡 N · 🔵 N. Sortable per totale errori, poi warni
 
 Accanto a `Large files / High fan-in / High fan-out / Unresolved imports`. Combina: god-file OR giant-function OR hub-file OR file-cycle.
 
-### 3. Drawer — sezione "Diagnostics"
+### 3. Drawer - sezione "Diagnostics"
 
 Sopra "Symbols". Lista dei `FileDiagnostic` del file, raggruppati per severity, ognuno cliccabile → apre il file alla `line` indicata (nuovo messaggio `file:open` esteso con `line`, vedi [message-protocol](../reference/message-protocol.md)).
 
@@ -191,7 +191,7 @@ Sopra "Symbols". Lista dei `FileDiagnostic` del file, raggruppati per severity, 
 
 Numero totale di errori di progetto sull'icona Atlante nella activity bar. È il nudge che riporta l'utente nel pannello anche quando non ci sta pensando.
 
-### 5. Grafo — evidenza visiva
+### 5. Grafo - evidenza visiva
 
 In [dependency-graph](../reference/dependency-graph.md): nodi con diagnostics `error` bordati di rosso, nodi dei cicli collegati da archi rossi.
 
@@ -199,7 +199,7 @@ In [dependency-graph](../reference/dependency-graph.md): nodi con diagnostics `e
 
 ## Roadmap
 
-### M1 — Tier 1 minimo viable
+### M1 - Tier 1 minimo viable
 
 1. `FileDiagnostic` nel payload + mutazione dei tipi shared
 2. `DiagnosticsBuilder` scheletro
@@ -209,20 +209,20 @@ In [dependency-graph](../reference/dependency-graph.md): nodi con diagnostics `e
 
 Rilasciabile da solo. Già copre il caso d'uso principale ("non mi ero accorto che quel file fosse a 2800 righe").
 
-### M2 — Dead code (richiede `used_names`)
+### M2 - Dead code (richiede `used_names`)
 
 1. estendere [typescript-mapper](../../src/workers/mappers/typescript-mapper.ts) e [python-mapper](../../src/workers/mappers/python-mapper.ts) con `used_names`
 2. check: `unused-import`, `dead-symbol`, `dead-export`, `orphan-file`
 3. soppressioni false-positive
 4. badge activity bar
 
-### M3 — Smell e rules
+### M3 - Smell e rules
 
 1. `structural-duplicate`, `import-sprawl`, `dependency-sprawl`, `dir-cycle`
 2. `.atlante/rules.json` + `layer-violation`
 3. evidenza visiva sul grafo
 
-### M4 — nice to have
+### M4 - nice to have
 
 1. soglie configurabili via settings + UI di override
 2. "ignora questa diagnostic" persistito in `.atlante/suppressions.json`
@@ -231,7 +231,7 @@ Rilasciabile da solo. Già copre il caso d'uso principale ("non mi ero accorto c
 
 ---
 
-## Quick win parallelo — non bloccante
+## Quick win parallelo - non bloccante
 
 **Path alias resolution in [import-resolver](../reference/import-resolver.md):** leggere `tsconfig.json → compilerOptions.paths` e `baseUrl`. Oggi sul progetto Architect viewato in demo, 68 su 186 edge (37%) sono unresolved proprio per questo motivo. Finché non è risolto, il filtro "Unresolved imports" è rumoroso e i check `hub-file` / `file-cycle` / `dead-export` sotto-stimano le relazioni reali.
 

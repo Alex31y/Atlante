@@ -4,7 +4,7 @@ Re-runs workspace analysis from inside the webview. Functionally equivalent to [
 
 ## Command
 
-- ID: `archlens.refreshDiagram`
+- ID: `atlante.refreshDiagram`
 - Title: **Atlante: Refresh**
 - Hidden from command palette (`when: false`)
 
@@ -19,10 +19,10 @@ Discards cached hashes where appropriate and runs the full pipeline again. Usefu
 
 ## Code
 
-- [src/extension/extension.ts](../../src/extension/extension.ts) — handler
-- [src/extension/services/AnalysisOrchestrator.ts](../../src/extension/services/AnalysisOrchestrator.ts) — orchestration
+- [src/extension/extension.ts](../../src/extension/extension.ts) - handler
+- [src/extension/services/AnalysisOrchestrator.ts](../../src/extension/services/AnalysisOrchestrator.ts) - orchestration
 
 ## Related
 
 - [analyze-workspace](analyze-workspace.md)
-- [file-watcher](file-watcher.md) — covers small edits automatically
+- [file-watcher](file-watcher.md) - covers small edits automatically

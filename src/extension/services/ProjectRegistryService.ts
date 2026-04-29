@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ProjectEntry, ProjectSummary } from '../../shared/types/projects';
-import { ARCHLENS_DIR } from '../../shared/constants';
+import { ATLANTE_DIR } from '../../shared/constants';
 
 const STORAGE_KEY = 'codeChecker.projects';
 
@@ -50,7 +50,7 @@ export class ProjectRegistryService {
     const valid: ProjectEntry[] = [];
     for (const entry of list) {
       try {
-        const dataUri = vscode.Uri.joinPath(vscode.Uri.file(entry.fsPath), ARCHLENS_DIR);
+        const dataUri = vscode.Uri.joinPath(vscode.Uri.file(entry.fsPath), ATLANTE_DIR);
         await vscode.workspace.fs.stat(dataUri);
         valid.push(entry);
       } catch {

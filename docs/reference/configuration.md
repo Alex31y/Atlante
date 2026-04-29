@@ -4,7 +4,7 @@ User-configurable settings contributed by the extension. Exposed in VS Code Sett
 
 ## Settings
 
-### `archlens.excludePatterns`
+### `atlante.excludePatterns`
 
 - Type: `string[]`
 - Default: 40+ glob patterns covering `node_modules`, `dist`, `build`, `.venv`, `target`, `Pods`, `DerivedData`, lockfiles, caches, etc. (see [package.json](../../package.json))
@@ -13,7 +13,7 @@ User-configurable settings contributed by the extension. Exposed in VS Code Sett
 
 Add project-specific patterns here when monorepos or generated folders bloat the inventory.
 
-### `archlens.maxFilesForFullAnalysis`
+### `atlante.maxFilesForFullAnalysis`
 
 - Type: `number`
 - Default: `500`
@@ -23,4 +23,4 @@ Add project-specific patterns here when monorepos or generated folders bloat the
 ## Related
 
 - [analyze-workspace](analyze-workspace.md)
-- [language-support](language-support.md) — which extensions count toward the limit
+- [language-support](language-support.md) - which extensions count toward the limit

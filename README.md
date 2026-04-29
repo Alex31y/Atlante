@@ -32,8 +32,8 @@ Three principles, in order:
 1. You're deep in a Claude Code / Cursor / Aider session. Things feel slow. Edits start failing.
 2. Run **Analyze Workspace**.
 3. Open the table. It is already sorted by lines of code, largest first.
-4. Screenshot the top files and dependency signals.
-5. Give that screenshot to your coding agent and ask it to split one offender with the surrounding context.
+4. Click **Copy Agent Prompt** to generate a structured triage prompt with your top files and dependency signals.
+5. Paste it into your coding agent. It picks the next low-risk extraction, explains why, and tells you what not to touch.
 6. Resume shipping.
 
 That's it. No AI in the loop, no cloud, no waiting. The analysis is serialized under `.atlante/` as diff-friendly JSON, so you can commit it and watch your repo's structural health over time.
@@ -44,11 +44,12 @@ Atlante gives your coding agent the map before you ask it to refactor.
 
 [![Coding agent refactor plan](https://github.com/Alex31y/Atlante/raw/main/docs/assets/agent-workflow.png)](/Alex31y/Atlante/blob/main/docs/assets/agent-workflow.png)
 
-Screenshot the refactor queue, paste it into your coding agent, and ask for the next low-risk, high-value extraction.
+Click Copy Agent Prompt, paste into your coding agent, ask for the next low-risk, high-value extraction.
 
 ## What you get today
 
 - **Refactor queue.** Every file ranked by lines of code, with imports, exports, fan-in, and fan-out. Sortable, searchable, filterable.
+- **Copy Agent Prompt.** One-click structured prompt with your top files and dependency signals, ready to paste into Claude Code, Cursor, or any other coding agent. The prompt asks for the next low-risk extraction with explicit reasoning.
 - **Quick filters.** *Largest files*, *High fan-in*, *High fan-out*. One click, see what stands out.
 - **File details drawer.** Symbols, imports (resolved vs external vs unresolved), dependents, open-file action.
 - **Dependency Constellation.** Interactive graph of internal dependencies, clustered by top-level folder, with focus mode and impact-based node sizing.
@@ -95,11 +96,11 @@ Then in VS Code: **Extensions -> ... -> Install from VSIX...** and pick the gene
 
 | Command | What it does |
 | --- | --- |
-| `archlens.showDiagram` | Open the Atlante panel |
-| `archlens.analyzeWorkspace` | Run a full scan |
-| `archlens.refreshDiagram` | Re-analyze the workspace |
-| `archlens.switchProject` | Switch the active analyzed project |
-| `archlens.removeProject` | Remove a project from the library |
+| `atlante.showDiagram` | Open the Atlante panel |
+| `atlante.analyzeWorkspace` | Run a full scan |
+| `atlante.refreshDiagram` | Re-analyze the workspace |
+| `atlante.switchProject` | Switch the active analyzed project |
+| `atlante.removeProject` | Remove a project from the library |
 
 Per-feature docs: [docs/reference/](https://github.com/Alex31y/Atlante/blob/main/docs/reference/README.md).
 
@@ -107,8 +108,8 @@ Per-feature docs: [docs/reference/](https://github.com/Alex31y/Atlante/blob/main
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `archlens.excludePatterns` | 40+ globs | Folders/files skipped during analysis |
-| `archlens.maxFilesForFullAnalysis` | 500 | Warn threshold before analyzing very large workspaces |
+| `atlante.excludePatterns` | 40+ globs | Folders/files skipped during analysis |
+| `atlante.maxFilesForFullAnalysis` | 500 | Warn threshold before analyzing very large workspaces |
 
 ## Development
 

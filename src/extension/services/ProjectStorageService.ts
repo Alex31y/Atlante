@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ARCHLENS_DIR, STORAGE_PATHS } from '../../shared/constants';
+import { ATLANTE_DIR, STORAGE_PATHS } from '../../shared/constants';
 import type { ArchitectureModel, ArchitectureHypothesis, ComponentLogicResult } from '../../shared/types/architecture';
 import type { DiagramModel, ClusterAssignment, FlowWalkthrough } from '../../shared/types/diagrams';
 import type { CodeHealthPayload } from '../../shared/types/metrics';
@@ -20,23 +20,23 @@ export class ProjectStorageService {
   // Private helpers
 
   private static getLegacyUri(root: vscode.Uri, relativePath: string): vscode.Uri {
-    return vscode.Uri.joinPath(root, ARCHLENS_DIR, relativePath);
+    return vscode.Uri.joinPath(root, ATLANTE_DIR, relativePath);
   }
 
   private static getProjectDataRootUri(root: vscode.Uri): vscode.Uri {
-    return vscode.Uri.joinPath(root, ARCHLENS_DIR);
+    return vscode.Uri.joinPath(root, ATLANTE_DIR);
   }
 
   private static getSnapshotsRootUri(root: vscode.Uri): vscode.Uri {
-    return vscode.Uri.joinPath(root, ARCHLENS_DIR, this.SNAPSHOTS_DIR);
+    return vscode.Uri.joinPath(root, ATLANTE_DIR, this.SNAPSHOTS_DIR);
   }
 
   private static getSnapshotUri(root: vscode.Uri, snapshotId: string, relativePath: string): vscode.Uri {
-    return vscode.Uri.joinPath(root, ARCHLENS_DIR, this.SNAPSHOTS_DIR, snapshotId, relativePath);
+    return vscode.Uri.joinPath(root, ATLANTE_DIR, this.SNAPSHOTS_DIR, snapshotId, relativePath);
   }
 
   private static getLatestSnapshotPointerUri(root: vscode.Uri): vscode.Uri {
-    return vscode.Uri.joinPath(root, ARCHLENS_DIR, this.SNAPSHOTS_LATEST_PATH);
+    return vscode.Uri.joinPath(root, ATLANTE_DIR, this.SNAPSHOTS_LATEST_PATH);
   }
 
   private static async read<T>(uri: vscode.Uri): Promise<T | undefined> {
@@ -340,9 +340,9 @@ export class ProjectStorageService {
     }
 
     const ws = context.workspaceState;
-    const model = ws.get<ArchitectureModel>('archlens.lastModel');
-    const hypothesis = ws.get<ArchitectureHypothesis>('archlens.lastHypothesis');
-    const diagram = ws.get<DiagramModel>('archlens.lastDiagram');
+    const model = ws.get<ArchitectureModel>('atlante.lastModel');
+    const hypothesis = ws.get<ArchitectureHypothesis>('atlante.lastHypothesis');
+    const diagram = ws.get<DiagramModel>('atlante.lastDiagram');
 
     if (!model || !hypothesis || !diagram) {
       return;
@@ -359,13 +359,13 @@ export class ProjectStorageService {
         this.writeDiagram(root, diagram, snapshotId),
       ]);
 
-      const hashEntries = ws.get<[string, string][]>('archlens.fileHashes');
+      const hashEntries = ws.get<[string, string][]>('atlante.fileHashes');
       if (hashEntries) {
         await this.writeHashes(root, hashEntries, snapshotId);
       }
 
-      const explanation = ws.get<string>('archlens.lastExplanation');
-      const activeTab = ws.get<string>('archlens.activeTab');
+      const explanation = ws.get<string>('atlante.lastExplanation');
+      const activeTab = ws.get<string>('atlante.activeTab');
       if (explanation !== undefined || activeTab !== undefined) {
         await this.writeUiState(root, {
           activeTab: activeTab ?? null,
@@ -373,27 +373,27 @@ export class ProjectStorageService {
         });
       }
 
-      const clusters = ws.get<ClusterAssignment[]>('archlens.clusters.v2');
+      const clusters = ws.get<ClusterAssignment[]>('atlante.clusters.v2');
       if (clusters) {
         await this.writeClusters(root, clusters, snapshotId);
       }
 
-      const flows = ws.get<FlowWalkthrough[]>('archlens.flows');
+      const flows = ws.get<FlowWalkthrough[]>('atlante.flows');
       if (flows) {
         await this.writeFlows(root, flows, snapshotId);
       }
 
-      const logicFlows = ws.get<[string, ComponentLogicResult][]>('archlens.logicFlows');
+      const logicFlows = ws.get<[string, ComponentLogicResult][]>('atlante.logicFlows');
       if (logicFlows) {
         await this.writeLogicFlows(root, logicFlows, snapshotId);
       }
 
-      const health = ws.get<CodeHealthPayload>('archlens.codeHealth');
+      const health = ws.get<CodeHealthPayload>('atlante.codeHealth');
       if (health) {
         await this.writeHealth(root, health, snapshotId);
       }
 
-      const oldRulesUri = vscode.Uri.joinPath(root, ARCHLENS_DIR, 'rules.json');
+      const oldRulesUri = vscode.Uri.joinPath(root, ATLANTE_DIR, 'rules.json');
       const newRulesUri = this.getLegacyUri(root, STORAGE_PATHS.rules);
       if (await this.exists(oldRulesUri) && !(await this.exists(newRulesUri))) {
         const rawRules = await vscode.workspace.fs.readFile(oldRulesUri);
@@ -404,16 +404,16 @@ export class ProjectStorageService {
       }
 
       await Promise.all([
-        ws.update('archlens.lastModel', undefined),
-        ws.update('archlens.lastHypothesis', undefined),
-        ws.update('archlens.lastDiagram', undefined),
-        ws.update('archlens.fileHashes', undefined),
-        ws.update('archlens.lastExplanation', undefined),
-        ws.update('archlens.activeTab', undefined),
-        ws.update('archlens.clusters.v2', undefined),
-        ws.update('archlens.flows', undefined),
-        ws.update('archlens.logicFlows', undefined),
-        ws.update('archlens.codeHealth', undefined),
+        ws.update('atlante.lastModel', undefined),
+        ws.update('atlante.lastHypothesis', undefined),
+        ws.update('atlante.lastDiagram', undefined),
+        ws.update('atlante.fileHashes', undefined),
+        ws.update('atlante.lastExplanation', undefined),
+        ws.update('atlante.activeTab', undefined),
+        ws.update('atlante.clusters.v2', undefined),
+        ws.update('atlante.flows', undefined),
+        ws.update('atlante.logicFlows', undefined),
+        ws.update('atlante.codeHealth', undefined),
       ]);
 
       console.log('[Atlante] Migration complete. workspaceState cleared.');

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ARCHLENS_THEME } from '../../shared/constants';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ATLANTE_THEME } from '../../shared/constants';
 import type { FileInventoryItem, FileInventoryPayload } from '../../shared/types/inventory';
 
 interface SourceInventoryPageProps {
@@ -18,7 +18,7 @@ type SortKey = 'path' | 'language' | 'loc' | 'imports' | 'exports' | 'fanIn' | '
 type SortDirection = 'asc' | 'desc';
 type ViewMode = 'table' | 'graph';
 type GraphEdgeMode = 'all' | 'selected';
-type QuickFilter = 'all' | 'large' | 'fanIn' | 'fanOut';
+type QueueMode = 'all' | 'large' | 'fanIn' | 'fanOut';
 type DependencyGraphNode = {
   file: FileInventoryItem;
   filePath: string;
@@ -50,29 +50,29 @@ const primaryButtonStyle: React.CSSProperties = {
   padding: '10px 14px',
   fontSize: 12,
   fontWeight: 700,
-  background: ARCHLENS_THEME.accentPrimary,
+  background: ATLANTE_THEME.accentPrimary,
   color: '#fff',
   cursor: 'pointer',
 };
 
 const secondaryButtonStyle: React.CSSProperties = {
-  border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+  border: `1px solid ${ATLANTE_THEME.borderDefault}`,
   borderRadius: 2,
   padding: '10px 14px',
   fontSize: 12,
   fontWeight: 700,
-  background: ARCHLENS_THEME.cardBg,
-  color: ARCHLENS_THEME.textPrimary,
+  background: ATLANTE_THEME.cardBg,
+  color: ATLANTE_THEME.textPrimary,
   cursor: 'pointer',
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+  border: `1px solid ${ATLANTE_THEME.borderDefault}`,
   borderRadius: 2,
   padding: '10px 12px',
   background: '#fff',
-  color: ARCHLENS_THEME.textPrimary,
+  color: ATLANTE_THEME.textPrimary,
   fontSize: 12,
   boxSizing: 'border-box',
   minWidth: 0,
@@ -95,11 +95,12 @@ export function SourceInventoryPage({
   const [sortBy, setSortBy] = useState<SortKey>('loc');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedTableFilePath, setSelectedTableFilePath] = useState<string | null>(null);
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [queueMode, setQueueMode] = useState<QueueMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedGraphFilePath, setSelectedGraphFilePath] = useState<string | null>(null);
   const [hoveredGraphFilePath, setHoveredGraphFilePath] = useState<string | null>(null);
   const [agentPromptCopied, setAgentPromptCopied] = useState(false);
+  const [graphAutoSelectionDone, setGraphAutoSelectionDone] = useState(false);
 
   const languages = useMemo(
     () => inventory ? [...new Set(inventory.files.map((file) => file.language))].sort() : [],
@@ -110,21 +111,22 @@ export function SourceInventoryPage({
     [inventory],
   );
 
-  const visibleFiles = useMemo(() => {
+  const scopedFiles = useMemo(() => {
     if (!inventory) return [];
-    const query = search.trim().toLowerCase();
     return inventory.files
       .filter((file) => {
-        const matchesSearch = query.length === 0
-          || file.filePath.toLowerCase().includes(query)
-          || file.exports.some((entry) => entry.name.toLowerCase().includes(query))
-          || file.imports.some((entry) => entry.source.toLowerCase().includes(query));
         const matchesLanguage = languageFilter === 'all' || file.language === languageFilter;
         const matchesDirectory = directoryFilter === 'all' || file.topLevelDirectory === directoryFilter;
-        return matchesSearch && matchesLanguage && matchesDirectory && matchesQuickFilter(file, quickFilter);
+        return matchesLanguage && matchesDirectory;
       })
-      .sort((left, right) => compareFiles(left, right, sortBy, sortDirection));
-  }, [directoryFilter, inventory, languageFilter, quickFilter, search, sortBy, sortDirection]);
+      .sort((left, right) => compareQueuedFiles(left, right, queueMode, sortBy, sortDirection));
+  }, [directoryFilter, inventory, languageFilter, queueMode, sortBy, sortDirection]);
+
+  const visibleFiles = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (query.length === 0) return scopedFiles;
+    return scopedFiles.filter((file) => fileMatchesInventorySearch(file, query));
+  }, [scopedFiles, search]);
 
   const totalLoc = inventory?.files.reduce((total, file) => total + file.loc, 0) ?? 0;
   const selectedTableFile = selectedTableFilePath && inventory
@@ -134,13 +136,39 @@ export function SourceInventoryPage({
   const actionLabel = status === 'stale' ? 'Refresh' : 'Analyze';
   const actionHandler = status === 'stale' ? onRefresh : onAnalyze;
 
+  useEffect(() => {
+    setGraphAutoSelectionDone(false);
+    setSelectedGraphFilePath(null);
+    setHoveredGraphFilePath(null);
+  }, [workspaceName]);
+
   const handleSort = (key: SortKey) => {
     if (sortBy === key) {
       setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+      setQueueMode('all');
       return;
     }
+    setQueueMode('all');
     setSortBy(key);
     setSortDirection(key === 'path' || key === 'language' ? 'asc' : 'desc');
+  };
+
+  const handleQueueModeChange = (mode: QueueMode) => {
+    setQueueMode(mode);
+    if (mode === 'large') {
+      setSortBy('loc');
+      setSortDirection('desc');
+      return;
+    }
+    if (mode === 'fanIn') {
+      setSortBy('fanIn');
+      setSortDirection('desc');
+      return;
+    }
+    if (mode === 'fanOut') {
+      setSortBy('fanOut');
+      setSortDirection('desc');
+    }
   };
 
   const handleCopyAgentPrompt = async () => {
@@ -148,7 +176,7 @@ export function SourceInventoryPage({
     const prompt = buildAgentPrompt(workspaceName, visibleFiles, {
       language: languageFilter,
       directory: directoryFilter,
-      quickFilter,
+      queueMode,
       search,
     });
     await copyTextToClipboard(prompt);
@@ -160,8 +188,8 @@ export function SourceInventoryPage({
     <div
       style={{
         height: '100vh',
-        background: ARCHLENS_THEME.canvasBg,
-        color: ARCHLENS_THEME.textPrimary,
+        background: ATLANTE_THEME.canvasBg,
+        color: ATLANTE_THEME.textPrimary,
         fontFamily: 'Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         padding: 16,
         overflow: 'hidden',
@@ -184,7 +212,7 @@ export function SourceInventoryPage({
           <h1 style={{ margin: 0, fontSize: 24, lineHeight: 1.1 }}>
             {workspaceName}
           </h1>
-          <div style={{ marginTop: 6, fontSize: 12, color: ARCHLENS_THEME.textSecondary }}>
+          <div style={{ marginTop: 6, fontSize: 12, color: ATLANTE_THEME.textSecondary }}>
             {inventory
               ? viewMode === 'table'
                 ? `${inventory.summary.totalFiles.toLocaleString()} files / ${totalLoc.toLocaleString()} lines / refactor targets first`
@@ -199,7 +227,7 @@ export function SourceInventoryPage({
       </header>
 
       {statusMessage && !inventory && (
-        <div style={{ fontSize: 12, color: status === 'error' ? ARCHLENS_THEME.alertErrorText : ARCHLENS_THEME.textSecondary }}>
+        <div style={{ fontSize: 12, color: status === 'error' ? ATLANTE_THEME.alertErrorText : ATLANTE_THEME.textSecondary }}>
           {statusMessage}
         </div>
       )}
@@ -208,9 +236,9 @@ export function SourceInventoryPage({
         <div
           style={{
             padding: '12px 14px',
-            background: ARCHLENS_THEME.alertErrorBg,
-            border: `1px solid ${ARCHLENS_THEME.alertErrorBorder}`,
-            color: ARCHLENS_THEME.alertErrorText,
+            background: ATLANTE_THEME.alertErrorBg,
+            border: `1px solid ${ATLANTE_THEME.alertErrorBorder}`,
+            color: ATLANTE_THEME.alertErrorText,
             fontSize: 12,
           }}
         >
@@ -237,21 +265,25 @@ export function SourceInventoryPage({
           <section
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(220px, 1fr) minmax(140px, 180px) minmax(140px, 220px) minmax(150px, 170px)',
+              gridTemplateColumns: viewMode === 'table'
+                ? 'minmax(220px, 1fr) minmax(140px, 180px) minmax(140px, 220px) minmax(150px, 170px)'
+                : 'minmax(140px, 180px) minmax(140px, 220px) minmax(150px, 170px)',
               gap: 8,
               flexShrink: 0,
               padding: 8,
-              border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
-              background: ARCHLENS_THEME.surfaceBg,
+              border: `1px solid ${ATLANTE_THEME.borderDefault}`,
+              background: ATLANTE_THEME.surfaceBg,
               borderRadius: 4,
             }}
           >
-            <input
-              style={inputStyle}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Filter files, imports, exports"
-            />
+            {viewMode === 'table' && (
+              <input
+                style={inputStyle}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Filter files, imports, exports"
+              />
+            )}
             <select style={inputStyle} value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}>
               <option value="all">All languages</option>
               {languages.map((language) => (
@@ -266,14 +298,14 @@ export function SourceInventoryPage({
             </select>
             <ViewToggle value={viewMode} onChange={setViewMode} />
           </section>
-          <QuickFilterBar value={quickFilter} onChange={setQuickFilter} />
+          <QueueModeBar value={queueMode} onChange={handleQueueModeChange} />
 
           <main
             style={{
               flex: 1,
               minHeight: 0,
-              background: ARCHLENS_THEME.cardBg,
-              border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+              background: ATLANTE_THEME.cardBg,
+              border: `1px solid ${ATLANTE_THEME.borderDefault}`,
               borderRadius: 4,
               overflow: 'hidden',
               display: 'flex',
@@ -286,6 +318,7 @@ export function SourceInventoryPage({
                 <TableContextBar
                   visibleCount={visibleFiles.length}
                   totalCount={inventory.files.length}
+                  queueMode={queueMode}
                   copied={agentPromptCopied}
                   onCopyPrompt={handleCopyAgentPrompt}
                 />
@@ -295,11 +328,11 @@ export function SourceInventoryPage({
                     gridTemplateColumns: tableGridColumns,
                     gap: 10,
                     padding: '10px 12px',
-                    borderBottom: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+                    borderBottom: `1px solid ${ATLANTE_THEME.borderDefault}`,
                     fontSize: 11,
                     fontWeight: 700,
-                    color: ARCHLENS_THEME.textTertiary,
-                    background: ARCHLENS_THEME.surfaceBg,
+                    color: ATLANTE_THEME.textTertiary,
+                    background: ATLANTE_THEME.surfaceBg,
                   }}
                 >
                   <div style={{ textAlign: 'right' }}>#</div>
@@ -316,7 +349,7 @@ export function SourceInventoryPage({
                   {visibleFiles.map((file, index) => {
                     const selected = selectedTableFilePath === file.filePath;
                     const rank = index + 1;
-                    const rankedByLines = sortBy === 'loc' && sortDirection === 'desc';
+                    const rankedByLines = (queueMode === 'large' || queueMode === 'all') && sortBy === 'loc' && sortDirection === 'desc';
                     return (
                       <button
                         key={file.filePath}
@@ -329,10 +362,10 @@ export function SourceInventoryPage({
                           alignItems: 'center',
                           padding: '10px 12px',
                           border: 'none',
-                          borderBottom: `1px solid ${ARCHLENS_THEME.borderSubtle}`,
-                          background: selected ? '#eef6f8' : rankedByLines && rank <= 3 ? '#fbfcf8' : ARCHLENS_THEME.cardBg,
+                          borderBottom: `1px solid ${ATLANTE_THEME.borderSubtle}`,
+                          background: selected ? '#eef6f8' : rankedByLines && rank <= 3 ? '#fbfcf8' : ATLANTE_THEME.cardBg,
                           boxShadow: rankedByLines && rank <= 3 ? 'inset 3px 0 0 #66c7d8' : undefined,
-                          color: ARCHLENS_THEME.textPrimary,
+                          color: ATLANTE_THEME.textPrimary,
                           textAlign: 'left',
                           cursor: 'pointer',
                           fontSize: 12,
@@ -350,7 +383,7 @@ export function SourceInventoryPage({
                     );
                   })}
                   {visibleFiles.length === 0 && (
-                    <div style={{ padding: 20, fontSize: 13, color: ARCHLENS_THEME.textSecondary }}>
+                    <div style={{ padding: 20, fontSize: 13, color: ATLANTE_THEME.textSecondary }}>
                       No files match the current filters.
                     </div>
                   )}
@@ -365,9 +398,12 @@ export function SourceInventoryPage({
               </>
             ) : (
               <DependencyGraphView
-                files={visibleFiles}
+                files={scopedFiles}
                 selectedFilePath={selectedGraphFilePath}
                 hoveredFilePath={hoveredGraphFilePath}
+                queueMode={queueMode}
+                autoSelectEnabled={!graphAutoSelectionDone}
+                onAutoSelect={() => setGraphAutoSelectionDone(true)}
                 onSelectFile={setSelectedGraphFilePath}
                 onHoverFile={setHoveredGraphFilePath}
                 onOpenFile={onOpenFile}
@@ -383,13 +419,13 @@ export function SourceInventoryPage({
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            background: ARCHLENS_THEME.cardBg,
-            border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+            background: ATLANTE_THEME.cardBg,
+            border: `1px solid ${ATLANTE_THEME.borderDefault}`,
           }}
         >
           <div style={{ maxWidth: 420, padding: 24 }}>
             <h2 style={{ margin: 0, fontSize: 22 }}>Source Inventory</h2>
-            <p style={{ margin: '10px 0 18px', fontSize: 13, lineHeight: 1.6, color: ARCHLENS_THEME.textSecondary }}>
+            <p style={{ margin: '10px 0 18px', fontSize: 13, lineHeight: 1.6, color: ATLANTE_THEME.textSecondary }}>
               {status === 'analyzing'
                 ? statusMessage ?? 'Building source inventory...'
                 : 'Run a deterministic scan to load files, line counts, imports, exports, and dependency KPIs.'}
@@ -406,51 +442,51 @@ function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        background: ARCHLENS_THEME.cardBg,
-        border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+        background: ATLANTE_THEME.cardBg,
+        border: `1px solid ${ATLANTE_THEME.borderDefault}`,
         padding: '7px 10px',
         borderRadius: 2,
         minHeight: 42,
       }}
     >
-      <div style={{ fontSize: 10, color: ARCHLENS_THEME.textTertiary, fontWeight: 700, marginBottom: 2 }}>
+      <div style={{ fontSize: 10, color: ATLANTE_THEME.textTertiary, fontWeight: 700, marginBottom: 2 }}>
         {label}
       </div>
-      <div style={{ fontSize: 17, fontWeight: 800, color: ARCHLENS_THEME.textPrimary }}>
+      <div style={{ fontSize: 17, fontWeight: 800, color: ATLANTE_THEME.textPrimary }}>
         {value}
       </div>
     </div>
   );
 }
 
-function QuickFilterBar({ value, onChange }: { value: QuickFilter; onChange: (value: QuickFilter) => void }) {
-  const filters: Array<{ key: QuickFilter; label: string }> = [
+function QueueModeBar({ value, onChange }: { value: QueueMode; onChange: (value: QueueMode) => void }) {
+  const modes: Array<{ key: QueueMode; label: string }> = [
     { key: 'all', label: 'All files' },
-    { key: 'large', label: 'Largest files' },
-    { key: 'fanIn', label: 'High fan-in' },
-    { key: 'fanOut', label: 'High fan-out' },
+    { key: 'large', label: 'Refactor candidates' },
+    { key: 'fanIn', label: 'Critical hubs' },
+    { key: 'fanOut', label: 'Tangled files' },
   ];
   // TODO: Restore unresolved-import surfacing once path aliases and package resolution stop producing noisy false positives.
 
   return (
     <section style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
-      {filters.map((filter) => {
-        const active = value === filter.key;
+      {modes.map((mode) => {
+        const active = value === mode.key;
         return (
           <button
-            key={filter.key}
-            onClick={() => onChange(filter.key)}
+            key={mode.key}
+            onClick={() => onChange(mode.key)}
             style={{
-              border: `1px solid ${active ? ARCHLENS_THEME.accentPrimary : ARCHLENS_THEME.borderDefault}`,
-              background: active ? '#edf7fa' : ARCHLENS_THEME.cardBg,
-              color: active ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textSecondary,
+              border: `1px solid ${active ? ATLANTE_THEME.accentPrimary : ATLANTE_THEME.borderDefault}`,
+              background: active ? '#edf7fa' : ATLANTE_THEME.cardBg,
+              color: active ? ATLANTE_THEME.textPrimary : ATLANTE_THEME.textSecondary,
               padding: '6px 9px',
               fontSize: 11,
               fontWeight: 800,
               cursor: 'pointer',
             }}
           >
-            {filter.label}
+            {mode.label}
           </button>
         );
       })}
@@ -464,7 +500,7 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+        border: `1px solid ${ATLANTE_THEME.borderDefault}`,
         background: '#fff',
         minHeight: 38,
         borderRadius: 4,
@@ -481,9 +517,9 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
             title={mode === 'table' ? 'Table view' : 'Graph view'}
             style={{
               border: 'none',
-              borderRight: mode === 'table' ? `1px solid ${ARCHLENS_THEME.borderDefault}` : 'none',
-              background: active ? ARCHLENS_THEME.accentPrimary : '#fff',
-              color: active ? '#fff' : ARCHLENS_THEME.textSecondary,
+              borderRight: mode === 'table' ? `1px solid ${ATLANTE_THEME.borderDefault}` : 'none',
+              background: active ? ATLANTE_THEME.accentPrimary : '#fff',
+              color: active ? '#fff' : ATLANTE_THEME.textSecondary,
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -500,11 +536,13 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (value: Vi
 function TableContextBar({
   visibleCount,
   totalCount,
+  queueMode,
   copied,
   onCopyPrompt,
 }: {
   visibleCount: number;
   totalCount: number;
+  queueMode: QueueMode;
   copied: boolean;
   onCopyPrompt: () => void;
 }) {
@@ -517,21 +555,21 @@ function TableContextBar({
         justifyContent: 'space-between',
         gap: 12,
         padding: '9px 12px',
-        borderBottom: `1px solid ${ARCHLENS_THEME.borderSubtle}`,
+        borderBottom: `1px solid ${ATLANTE_THEME.borderSubtle}`,
         background: '#fbfcfd',
         fontSize: 12,
       }}
     >
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <strong style={{ fontSize: 12, color: ARCHLENS_THEME.textPrimary }}>Refactor queue</strong>
-        <span style={{ color: ARCHLENS_THEME.textSecondary }}>
-          Largest files first, with dependency signals
+        <strong style={{ fontSize: 12, color: ATLANTE_THEME.textPrimary }}>Refactor queue</strong>
+        <span style={{ color: ATLANTE_THEME.textSecondary }}>
+          {queueMode === 'all' ? 'Manual table order, with dependency signals' : `${queueModeLabel(queueMode)} first, with dependency signals`}
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <span
           style={{
-            color: ARCHLENS_THEME.textTertiary,
+            color: ATLANTE_THEME.textTertiary,
             fontVariantNumeric: 'tabular-nums',
             fontWeight: 700,
           }}
@@ -544,9 +582,9 @@ function TableContextBar({
           disabled={visibleCount === 0}
           title="Copy a refactor prompt for your coding agent"
           style={{
-            border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+            border: `1px solid ${ATLANTE_THEME.borderDefault}`,
             background: copied ? '#edf7fa' : '#fff',
-            color: copied ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textSecondary,
+            color: copied ? ATLANTE_THEME.textPrimary : ATLANTE_THEME.textSecondary,
             padding: '5px 8px',
             fontSize: 11,
             fontWeight: 800,
@@ -565,6 +603,9 @@ function DependencyGraphView({
   files,
   selectedFilePath,
   hoveredFilePath,
+  queueMode,
+  autoSelectEnabled,
+  onAutoSelect,
   onSelectFile,
   onHoverFile,
   onOpenFile,
@@ -572,6 +613,9 @@ function DependencyGraphView({
   files: FileInventoryItem[];
   selectedFilePath: string | null;
   hoveredFilePath: string | null;
+  queueMode: QueueMode;
+  autoSelectEnabled: boolean;
+  onAutoSelect: () => void;
   onSelectFile: (filePath: string | null) => void;
   onHoverFile: (filePath: string | null) => void;
   onOpenFile: (filePath: string) => void;
@@ -590,6 +634,17 @@ function DependencyGraphView({
   const [fullscreen, setFullscreen] = useState(false);
   const [edgeMode, setEdgeMode] = useState<GraphEdgeMode>('all');
   const [criticalMassEnabled, setCriticalMassEnabled] = useState(false);
+  const [graphSearch, setGraphSearch] = useState('');
+  const [graphSearchOpen, setGraphSearchOpen] = useState(false);
+  const preferredNode = useMemo(() => pickPreferredGraphNode(layout.nodes, queueMode), [layout.nodes, queueMode]);
+  const graphSearchMatches = useMemo(() => {
+    const query = graphSearch.trim().toLowerCase();
+    if (query.length === 0) return [];
+    return layout.nodes
+      .filter((node) => graphNodeMatchesSearch(node, query))
+      .sort((left, right) => compareGraphSearchMatches(left, right, query))
+      .slice(0, 8);
+  }, [graphSearch, layout.nodes]);
   const legendLanguages = useMemo(
     () => [...new Set(graphFiles.map((file) => file.language))].sort().slice(0, 5),
     [graphFiles],
@@ -654,23 +709,14 @@ function DependencyGraphView({
     setViewport(computeFitViewport(layout, viewportSize));
   }, [layout, viewportInteracted, viewportSize]);
 
-  const resetViewport = () => {
-    if (viewportSize.width <= 1 || viewportSize.height <= 1) {
-      return;
-    }
-    stopViewportAnimation();
-    setViewportInteracted(false);
-    setViewport(computeFitViewport(layout, viewportSize));
-  };
-
-  const stopViewportAnimation = () => {
+  const stopViewportAnimation = useCallback(() => {
     if (viewportAnimationRef.current !== null) {
       window.cancelAnimationFrame(viewportAnimationRef.current);
       viewportAnimationRef.current = null;
     }
-  };
+  }, []);
 
-  const animateViewportTo = (target: GraphViewport) => {
+  const animateViewportTo = useCallback((target: GraphViewport) => {
     stopViewportAnimation();
     const start = viewport;
     const startedAt = performance.now();
@@ -693,6 +739,69 @@ function DependencyGraphView({
     };
 
     viewportAnimationRef.current = window.requestAnimationFrame(step);
+  }, [stopViewportAnimation, viewport]);
+
+  const focusNode = useCallback((node: { x: number; y: number }) => {
+    if (viewportSize.width <= 1 || viewportSize.height <= 1) {
+      return;
+    }
+    const zoom = clamp(Math.max(viewport.zoom, 1.18), GRAPH_MIN_ZOOM, GRAPH_MAX_ZOOM);
+    setViewportInteracted(true);
+    animateViewportTo({
+      zoom,
+      offsetX: viewportSize.width / 2 - node.x * zoom,
+      offsetY: viewportSize.height / 2 - node.y * zoom,
+    });
+  }, [animateViewportTo, viewport.zoom, viewportSize.height, viewportSize.width]);
+
+  const selectAndFocusNode = useCallback((node: DependencyGraphNode) => {
+    onSelectFile(node.filePath);
+    focusNode(node);
+  }, [focusNode, onSelectFile]);
+
+  useEffect(() => {
+    if (!autoSelectEnabled || graphSearch.trim().length > 0) {
+      return;
+    }
+    if (!preferredNode) {
+      return;
+    }
+    if (selectedFilePath && layout.fileByPath.has(selectedFilePath)) {
+      return;
+    }
+    onAutoSelect();
+    onSelectFile(preferredNode.filePath);
+    focusNode(preferredNode);
+  }, [autoSelectEnabled, focusNode, graphSearch, layout.fileByPath, onAutoSelect, onSelectFile, preferredNode, selectedFilePath]);
+
+  useEffect(() => {
+    if (selectedFilePath && !layout.fileByPath.has(selectedFilePath)) {
+      onSelectFile(null);
+      onHoverFile(null);
+    }
+  }, [layout.fileByPath, onHoverFile, onSelectFile, selectedFilePath]);
+
+  useEffect(() => {
+    const query = graphSearch.trim();
+    if (query.length < 3) {
+      return;
+    }
+    const firstMatch = graphSearchMatches[0];
+    if (!firstMatch) {
+      return;
+    }
+    if (selectedFilePath !== firstMatch.filePath) {
+      selectAndFocusNode(firstMatch);
+    }
+  }, [graphSearch, graphSearchMatches, selectAndFocusNode, selectedFilePath]);
+
+  const resetViewport = () => {
+    if (viewportSize.width <= 1 || viewportSize.height <= 1) {
+      return;
+    }
+    stopViewportAnimation();
+    setViewportInteracted(false);
+    setViewport(computeFitViewport(layout, viewportSize));
   };
 
   const zoomAroundPoint = (nextZoom: number, pointerX: number, pointerY: number) => {
@@ -766,21 +875,52 @@ function DependencyGraphView({
   const handleSelectNode = (node: { filePath: string; x: number; y: number }) => {
     const selected = selectedFilePath === node.filePath;
     onSelectFile(selected ? null : node.filePath);
-    if (selected || viewportSize.width <= 1 || viewportSize.height <= 1) {
+    if (selected) {
       return;
     }
-    const zoom = clamp(Math.max(viewport.zoom, 1.18), GRAPH_MIN_ZOOM, GRAPH_MAX_ZOOM);
-    setViewportInteracted(true);
-    animateViewportTo({
-      zoom,
-      offsetX: viewportSize.width / 2 - node.x * zoom,
-      offsetY: viewportSize.height / 2 - node.y * zoom,
-    });
+    focusNode(node);
+  };
+
+  const chooseSearchMatch = (node: DependencyGraphNode) => {
+    setGraphSearch(node.filePath);
+    setGraphSearchOpen(false);
+    selectAndFocusNode(node);
+  };
+
+  const clearGraphSelection = () => {
+    setGraphSearch('');
+    setGraphSearchOpen(false);
+    onHoverFile(null);
+    onSelectFile(null);
+  };
+
+  const handleGraphSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      const firstMatch = graphSearchMatches[0];
+      if (firstMatch) {
+        chooseSearchMatch(firstMatch);
+      }
+      return;
+    }
+    if (event.key !== 'Escape') {
+      return;
+    }
+    if (graphSearchOpen) {
+      setGraphSearchOpen(false);
+      return;
+    }
+    if (graphSearch.length > 0) {
+      setGraphSearch('');
+      return;
+    }
+    if (selectedFilePath) {
+      onSelectFile(null);
+    }
   };
 
   if (files.length === 0) {
     return (
-      <div style={{ padding: 20, fontSize: 13, color: ARCHLENS_THEME.textSecondary }}>
+      <div style={{ padding: 20, fontSize: 13, color: ATLANTE_THEME.textSecondary }}>
         No files match the current filters.
       </div>
     );
@@ -814,7 +954,65 @@ function DependencyGraphView({
             color: 'rgba(246,244,238,0.68)',
           }}
         >
-          <strong style={{ color: '#f6f4ee' }}>Dependency Constellation</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 360px' }}>
+            <strong style={{ color: '#f6f4ee', flexShrink: 0 }}>Dependency Constellation</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <div style={{ position: 'relative', width: 320, maxWidth: 'min(320px, 42vw)', minWidth: 180 }}>
+                <input
+                  value={graphSearch}
+                  onChange={(event) => {
+                    setGraphSearch(event.target.value);
+                    setGraphSearchOpen(true);
+                  }}
+                  onFocus={() => setGraphSearchOpen(true)}
+                  onBlur={() => window.setTimeout(() => setGraphSearchOpen(false), 120)}
+                  onKeyDown={handleGraphSearchKeyDown}
+                  placeholder="Find file in graph"
+                  aria-label="Find file in graph"
+                  style={{
+                    width: '100%',
+                    height: 28,
+                    boxSizing: 'border-box',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 2,
+                    background: 'rgba(255,255,255,0.075)',
+                    color: '#f6f4ee',
+                    padding: '0 9px',
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+                {graphSearchOpen && graphSearch.trim().length > 0 && (
+                  <GraphSearchMenu
+                    matches={graphSearchMatches}
+                    query={graphSearch.trim()}
+                    onChoose={chooseSearchMatch}
+                  />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={clearGraphSelection}
+                disabled={!selectedFilePath && graphSearch.length === 0}
+                title="Clear graph focus"
+                aria-label="Clear graph focus"
+                style={{
+                  height: 28,
+                  minWidth: 44,
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 2,
+                  background: selectedFilePath || graphSearch.length > 0 ? 'rgba(255,255,255,0.075)' : 'rgba(255,255,255,0.035)',
+                  color: selectedFilePath || graphSearch.length > 0 ? '#f6f4ee' : 'rgba(246,244,238,0.36)',
+                  padding: '0 9px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: selectedFilePath || graphSearch.length > 0 ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Clear focus
+              </button>
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <GraphPill label="Files" value={layout.nodes.length.toLocaleString()} />
             <GraphPill label="Edges" value={visibleEdges.length.toLocaleString()} />
@@ -834,6 +1032,27 @@ function DependencyGraphView({
           </div>
         </div>
         <div ref={canvasRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {!selectedFilePath && graphSearch.trim().length === 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 14,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 2,
+              padding: '7px 10px',
+              border: '1px solid rgba(125,227,255,0.22)',
+              background: 'rgba(17,19,21,0.82)',
+              color: 'rgba(246,244,238,0.82)',
+              fontSize: 12,
+              fontWeight: 700,
+              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+              pointerEvents: 'none',
+            }}
+          >
+            Select a file to reveal its dependency impact.
+          </div>
+        )}
         <GraphLegend languages={legendLanguages} criticalMassEnabled={criticalMassEnabled} />
         <svg
           viewBox={`0 0 ${Math.max(1, viewportSize.width)} ${Math.max(1, viewportSize.height)}`}
@@ -988,13 +1207,13 @@ function GraphFilePanel({
         overflow: 'auto',
         padding: 14,
         background: '#fcfbf8',
-        border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+        border: `1px solid ${ATLANTE_THEME.borderDefault}`,
         boxShadow: '0 18px 42px rgba(0,0,0,0.24)',
         zIndex: 3,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-          <div style={{ fontSize: 11, color: ARCHLENS_THEME.textTertiary, fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: ATLANTE_THEME.textTertiary, fontWeight: 700, marginBottom: 8 }}>
             SELECTED FILE
           </div>
           <button
@@ -1003,9 +1222,9 @@ function GraphFilePanel({
             style={{
               width: 26,
               height: 24,
-              border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+              border: `1px solid ${ATLANTE_THEME.borderDefault}`,
               background: '#fff',
-              color: ARCHLENS_THEME.textSecondary,
+              color: ATLANTE_THEME.textSecondary,
               fontWeight: 800,
               cursor: 'pointer',
             }}
@@ -1042,8 +1261,8 @@ function GraphFilePanel({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ border: `1px solid ${ARCHLENS_THEME.borderSubtle}`, background: '#fff', padding: 8 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: ARCHLENS_THEME.textTertiary, marginBottom: 4 }}>{label}</div>
+    <div style={{ border: `1px solid ${ATLANTE_THEME.borderSubtle}`, background: '#fff', padding: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: ATLANTE_THEME.textTertiary, marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{value.toLocaleString()}</div>
     </div>
   );
@@ -1114,6 +1333,70 @@ function GraphPill({ label, value }: { label: string; value: string }) {
       <span style={{ color: 'rgba(246,244,238,0.48)' }}>{label}</span>
       <span>{value}</span>
     </span>
+  );
+}
+
+function GraphSearchMenu({
+  matches,
+  query,
+  onChoose,
+}: {
+  matches: DependencyGraphNode[];
+  query: string;
+  onChoose: (node: DependencyGraphNode) => void;
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 32,
+        left: 0,
+        right: 0,
+        maxHeight: 260,
+        overflow: 'auto',
+        border: '1px solid rgba(255,255,255,0.16)',
+        background: '#181b1f',
+        boxShadow: '0 14px 32px rgba(0,0,0,0.36)',
+        zIndex: 6,
+      }}
+    >
+      {matches.length > 0 ? matches.map((node, index) => (
+        <button
+          key={node.filePath}
+          type="button"
+          onMouseDown={(event) => {
+            event.preventDefault();
+            onChoose(node);
+          }}
+          style={{
+            width: '100%',
+            display: 'block',
+            border: 'none',
+            borderBottom: index === matches.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+            background: index === 0 ? 'rgba(125,227,255,0.12)' : 'transparent',
+            color: '#f6f4ee',
+            padding: '8px 9px',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {basename(node.filePath)}
+          </div>
+          <div style={{ marginTop: 2, fontSize: 10, color: 'rgba(246,244,238,0.58)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {node.filePath}
+          </div>
+          <div style={{ marginTop: 4, display: 'flex', gap: 8, fontSize: 10, color: 'rgba(246,244,238,0.48)' }}>
+            <span>{node.file.fanIn.toLocaleString()} in</span>
+            <span>{node.file.fanOut.toLocaleString()} out</span>
+          </div>
+        </button>
+      )) : (
+        <div style={{ padding: '9px 10px', fontSize: 12, color: 'rgba(246,244,238,0.56)' }}>
+          No file matches "{query}"
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1464,26 +1747,65 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function matchesQuickFilter(file: FileInventoryItem, filter: QuickFilter): boolean {
-  if (filter === 'large') return file.loc >= 800;
-  if (filter === 'fanIn') return file.fanIn >= 8;
-  if (filter === 'fanOut') return file.fanOut >= 8;
-  return true;
+function fileMatchesInventorySearch(file: FileInventoryItem, query: string): boolean {
+  return file.filePath.toLowerCase().includes(query)
+    || file.exports.some((entry) => entry.name.toLowerCase().includes(query))
+    || file.imports.some((entry) => entry.source.toLowerCase().includes(query));
+}
+
+function pickPreferredGraphNode(nodes: DependencyGraphNode[], queueMode: QueueMode): DependencyGraphNode | null {
+  if (nodes.length === 0) return null;
+  return [...nodes].sort((left, right) => {
+    if (queueMode === 'fanIn') return right.file.fanIn - left.file.fanIn || compareNodeImpact(left, right);
+    if (queueMode === 'fanOut') return right.file.fanOut - left.file.fanOut || compareNodeImpact(left, right);
+    if (queueMode === 'large') return right.file.loc - left.file.loc || compareNodeImpact(left, right);
+    return compareNodeImpact(left, right);
+  })[0] ?? null;
+}
+
+function compareNodeImpact(left: DependencyGraphNode, right: DependencyGraphNode): number {
+  return right.criticalMass - left.criticalMass
+    || right.file.fanIn - left.file.fanIn
+    || right.file.loc - left.file.loc
+    || left.filePath.localeCompare(right.filePath);
+}
+
+function graphNodeMatchesSearch(node: DependencyGraphNode, query: string): boolean {
+  return node.filePath.toLowerCase().includes(query) || basename(node.filePath).toLowerCase().includes(query);
+}
+
+function compareGraphSearchMatches(left: DependencyGraphNode, right: DependencyGraphNode, query: string): number {
+  const leftScore = graphSearchScore(left, query);
+  const rightScore = graphSearchScore(right, query);
+  return rightScore - leftScore || compareNodeImpact(left, right);
+}
+
+function graphSearchScore(node: DependencyGraphNode, query: string): number {
+  const path = node.filePath.toLowerCase();
+  const name = basename(node.filePath).toLowerCase();
+  let score = 0;
+  if (name === query) score += 120;
+  if (path === query) score += 110;
+  if (name.startsWith(query)) score += 80;
+  if (path.endsWith(query)) score += 55;
+  if (path.includes(`/${query}`) || path.includes(`\\${query}`)) score += 35;
+  score += Math.min(25, node.criticalMass);
+  return score;
 }
 
 function buildAgentPrompt(
   workspaceName: string,
   files: FileInventoryItem[],
-  filters: { language: string; directory: string; quickFilter: QuickFilter; search: string },
+  filters: { language: string; directory: string; queueMode: QueueMode; search: string },
 ): string {
   const topFiles = files.slice(0, 10);
-  const activeFilters = [
-    filters.quickFilter !== 'all' ? `quick filter: ${quickFilterLabel(filters.quickFilter)}` : null,
+  const activeContext = [
+    filters.queueMode !== 'all' ? `queue: ${queueModeLabel(filters.queueMode)}` : null,
     filters.language !== 'all' ? `language: ${filters.language}` : null,
     filters.directory !== 'all' ? `folder: ${filters.directory}` : null,
     filters.search.trim() ? `search: ${filters.search.trim()}` : null,
   ].filter(Boolean);
-  const filterLine = activeFilters.length > 0 ? `Active filters: ${activeFilters.join(', ')}\n\n` : '';
+  const filterLine = activeContext.length > 0 ? `Active context: ${activeContext.join(', ')}\n\n` : '';
   const targetList = topFiles.map((file, index) => [
     `${index + 1}. ${basename(file.filePath)}`,
     `   path: ${file.filePath}`,
@@ -1508,10 +1830,10 @@ function buildAgentPrompt(
   ].join('\n');
 }
 
-function quickFilterLabel(filter: QuickFilter): string {
-  if (filter === 'large') return 'Largest files';
-  if (filter === 'fanIn') return 'High fan-in';
-  if (filter === 'fanOut') return 'High fan-out';
+function queueModeLabel(mode: QueueMode): string {
+  if (mode === 'large') return 'Refactor candidates';
+  if (mode === 'fanIn') return 'Critical hubs';
+  if (mode === 'fanOut') return 'Tangled files';
   return 'All files';
 }
 
@@ -1574,7 +1896,7 @@ function HeaderCell({
       style={{
         border: 'none',
         background: 'transparent',
-        color: active || featured ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textTertiary,
+        color: active || featured ? ATLANTE_THEME.textPrimary : ATLANTE_THEME.textTertiary,
         font: 'inherit',
         fontWeight: active || featured ? 800 : 700,
         textAlign: sortKey === 'path' || sortKey === 'language' ? 'left' : 'right',
@@ -1599,7 +1921,7 @@ function RankCell({ rank, highlight }: { rank: number; highlight: boolean }) {
         justifyContent: 'center',
         borderRadius: 999,
         background: highlight ? '#e3f4f8' : 'transparent',
-        color: highlight ? ARCHLENS_THEME.textPrimary : ARCHLENS_THEME.textTertiary,
+        color: highlight ? ATLANTE_THEME.textPrimary : ATLANTE_THEME.textTertiary,
         fontSize: 11,
         fontWeight: 800,
         fontVariantNumeric: 'tabular-nums',
@@ -1616,7 +1938,7 @@ function NumberCell({ value, featured = false }: { value: number; featured?: boo
       style={{
         textAlign: 'right',
         fontVariantNumeric: 'tabular-nums',
-        color: featured ? ARCHLENS_THEME.textPrimary : 'inherit',
+        color: featured ? ATLANTE_THEME.textPrimary : 'inherit',
         fontWeight: featured ? 850 : 500,
       }}
     >
@@ -1631,7 +1953,7 @@ function FileNameCell({ filePath }: { filePath: string }) {
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 800 }}>
         {basename(filePath)}
       </span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: ARCHLENS_THEME.textTertiary, fontSize: 11 }}>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: ATLANTE_THEME.textTertiary, fontSize: 11 }}>
         {dirname(filePath)}
       </span>
     </span>
@@ -1643,9 +1965,9 @@ function LanguageBadge({ language }: { language: string }) {
     <span
       style={{
         justifySelf: 'start',
-        border: `1px solid ${ARCHLENS_THEME.borderSubtle}`,
+        border: `1px solid ${ATLANTE_THEME.borderSubtle}`,
         background: '#f7f6f2',
-        color: ARCHLENS_THEME.textSecondary,
+        color: ATLANTE_THEME.textSecondary,
         padding: '2px 6px',
         fontSize: 10,
         fontWeight: 700,
@@ -1677,16 +1999,16 @@ function InventoryFileDrawer({
         overflow: 'auto',
         padding: 14,
         background: '#fcfbf8',
-        border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+        border: `1px solid ${ATLANTE_THEME.borderDefault}`,
         boxShadow: '0 18px 42px rgba(0,0,0,0.16)',
         zIndex: 2,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: ARCHLENS_THEME.textTertiary, fontWeight: 700, marginBottom: 6 }}>FILE DETAILS</div>
+          <div style={{ fontSize: 11, color: ATLANTE_THEME.textTertiary, fontWeight: 700, marginBottom: 6 }}>FILE DETAILS</div>
           <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{basename(file.filePath)}</div>
-          <div style={{ marginTop: 4, fontSize: 11, color: ARCHLENS_THEME.textTertiary, overflowWrap: 'anywhere' }}>{dirname(file.filePath)}</div>
+          <div style={{ marginTop: 4, fontSize: 11, color: ATLANTE_THEME.textTertiary, overflowWrap: 'anywhere' }}>{dirname(file.filePath)}</div>
         </div>
         <button
           onClick={onClose}
@@ -1694,9 +2016,9 @@ function InventoryFileDrawer({
           style={{
             width: 28,
             height: 26,
-            border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
+            border: `1px solid ${ATLANTE_THEME.borderDefault}`,
             background: '#fff',
-            color: ARCHLENS_THEME.textSecondary,
+            color: ATLANTE_THEME.textSecondary,
             fontWeight: 800,
             cursor: 'pointer',
           }}
@@ -1728,7 +2050,7 @@ function InventoryFileDrawer({
 function DetailGroup({ title, values, empty }: { title: string; values: string[]; empty: string }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: ARCHLENS_THEME.textTertiary, marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: ATLANTE_THEME.textTertiary, marginBottom: 6 }}>
         {title}
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1737,12 +2059,12 @@ function DetailGroup({ title, values, empty }: { title: string; values: string[]
             key={value}
             style={{
               maxWidth: '100%',
-              border: `1px solid ${ARCHLENS_THEME.borderDefault}`,
-              background: ARCHLENS_THEME.cardBg,
+              border: `1px solid ${ATLANTE_THEME.borderDefault}`,
+              background: ATLANTE_THEME.cardBg,
               padding: '4px 7px',
               borderRadius: 2,
               fontSize: 11,
-              color: ARCHLENS_THEME.textSecondary,
+              color: ATLANTE_THEME.textSecondary,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -1751,14 +2073,41 @@ function DetailGroup({ title, values, empty }: { title: string; values: string[]
             {value}
           </span>
         )) : (
-          <span style={{ fontSize: 12, color: ARCHLENS_THEME.textTertiary }}>{empty}</span>
+          <span style={{ fontSize: 12, color: ATLANTE_THEME.textTertiary }}>{empty}</span>
         )}
         {values.length > 24 && (
-          <span style={{ fontSize: 11, color: ARCHLENS_THEME.textTertiary }}>+{values.length - 24} more</span>
+          <span style={{ fontSize: 11, color: ATLANTE_THEME.textTertiary }}>+{values.length - 24} more</span>
         )}
       </div>
     </div>
   );
+}
+
+function compareQueuedFiles(
+  left: FileInventoryItem,
+  right: FileInventoryItem,
+  queueMode: QueueMode,
+  sortKey: SortKey,
+  sortDirection: SortDirection,
+): number {
+  if (queueMode === 'large') {
+    return right.loc - left.loc
+      || right.fanIn + right.fanOut - (left.fanIn + left.fanOut)
+      || left.filePath.localeCompare(right.filePath);
+  }
+  if (queueMode === 'fanIn') {
+    return right.fanIn - left.fanIn
+      || right.fanOut - left.fanOut
+      || right.loc - left.loc
+      || left.filePath.localeCompare(right.filePath);
+  }
+  if (queueMode === 'fanOut') {
+    return right.fanOut - left.fanOut
+      || right.fanIn - left.fanIn
+      || right.loc - left.loc
+      || left.filePath.localeCompare(right.filePath);
+  }
+  return compareFiles(left, right, sortKey, sortDirection);
 }
 
 function compareFiles(left: FileInventoryItem, right: FileInventoryItem, key: SortKey, direction: SortDirection): number {

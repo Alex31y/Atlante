@@ -4,7 +4,7 @@ Opens the main Atlante webview panel with the source inventory and dependency vi
 
 ## Command
 
-- ID: `archlens.showDiagram`
+- ID: `atlante.showDiagram`
 - Title: **Atlante**
 - Icon: `$(symbol-structure)`
 - Visible in command palette: yes
@@ -24,11 +24,11 @@ Opens the main Atlante webview panel with the source inventory and dependency vi
 
 ## Code
 
-- [src/extension/extension.ts](../../src/extension/extension.ts) — registers the command
-- [src/extension/providers/DiagramPanelProvider.ts](../../src/extension/providers/DiagramPanelProvider.ts) — creates/manages the panel
-- [src/webview/App.tsx](../../src/webview/App.tsx) — panel contents
+- [src/extension/extension.ts](../../src/extension/extension.ts) - registers the command
+- [src/extension/providers/DiagramPanelProvider.ts](../../src/extension/providers/DiagramPanelProvider.ts) - creates/manages the panel
+- [src/webview/App.tsx](../../src/webview/App.tsx) - panel contents
 
 ## Related
 
-- [analyze-workspace](analyze-workspace.md) — run before inventory appears
-- [message-protocol](message-protocol.md) — how panel and host talk
+- [analyze-workspace](analyze-workspace.md) - run before inventory appears
+- [message-protocol](message-protocol.md) - how panel and host talk

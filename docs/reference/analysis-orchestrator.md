@@ -4,7 +4,7 @@ Coordinates the full analysis pipeline: discovery → parsing → inventory → 
 
 ## Responsibilities
 
-- Enumerate source files under the workspace, applying `archlens.excludePatterns` and the `archlens.maxFilesForFullAnalysis` budget.
+- Enumerate source files under the workspace, applying `atlante.excludePatterns` and the `atlante.maxFilesForFullAnalysis` budget.
 - Hash each file (content-based) and skip parsing for files whose hash is unchanged since the last run.
 - Dispatch parse requests to the [ast-worker](ast-worker.md) in batches.
 - Feed parse results to [SourceInventoryBuilder](../../src/extension/services/SourceInventoryBuilder.ts), which merges structures and resolves imports via [import-resolver](import-resolver.md).
@@ -19,6 +19,6 @@ Coordinates the full analysis pipeline: discovery → parsing → inventory → 
 
 ## Related
 
-- [analyze-workspace](analyze-workspace.md) — user-facing command
+- [analyze-workspace](analyze-workspace.md) - user-facing command
 - [refresh-diagram](refresh-diagram.md)
 - [configuration](configuration.md)

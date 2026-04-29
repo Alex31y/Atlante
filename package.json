@@ -2,7 +2,7 @@
   "name": "atlante",
   "displayName": "Atlante",
   "description": "Find the files your AI coding agent is silently bloating. Local, deterministic refactor triage.",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "OlexiyLysytsya",
   "icon": "resources/atlante-icon.png",
   "license": "MIT",
@@ -33,42 +33,42 @@
   "contributes": {
     "commands": [
       {
-        "command": "archlens.showDiagram",
+        "command": "atlante.showDiagram",
         "title": "Atlante",
         "icon": "$(symbol-structure)"
       },
       {
-        "command": "archlens.analyzeWorkspace",
+        "command": "atlante.analyzeWorkspace",
         "title": "Atlante: Analyze Workspace"
       },
       {
-        "command": "archlens.refreshDiagram",
+        "command": "atlante.refreshDiagram",
         "title": "Atlante: Refresh"
       },
       {
-        "command": "archlens.switchProject",
+        "command": "atlante.switchProject",
         "title": "Atlante: Switch Project"
       },
       {
-        "command": "archlens.removeProject",
+        "command": "atlante.removeProject",
         "title": "Atlante: Remove Project from Library"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "archlens.analyzeWorkspace",
+          "command": "atlante.analyzeWorkspace",
           "when": "false"
         },
         {
-          "command": "archlens.refreshDiagram",
+          "command": "atlante.refreshDiagram",
           "when": "false"
         },
         {
-          "command": "archlens.switchProject"
+          "command": "atlante.switchProject"
         },
         {
-          "command": "archlens.removeProject",
+          "command": "atlante.removeProject",
           "when": "false"
         }
       ]
@@ -76,7 +76,7 @@
     "configuration": {
       "title": "Atlante",
       "properties": {
-        "archlens.excludePatterns": {
+        "atlante.excludePatterns": {
           "type": "array",
           "default": [
             "**/node_modules/**",
@@ -129,7 +129,7 @@
           "description": "Glob patterns for files/folders to exclude from deterministic analysis.",
           "order": 1
         },
-        "archlens.maxFilesForFullAnalysis": {
+        "atlante.maxFilesForFullAnalysis": {
           "type": "number",
           "default": 500,
           "description": "Maximum number of source files to include in the deterministic source inventory.",
@@ -140,45 +140,45 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "archlens",
+          "id": "atlante",
           "title": "Atlante",
           "icon": "resources/atlante-icon.svg"
         }
       ]
     },
     "views": {
-      "archlens": [
+      "atlante": [
         {
           "type": "webview",
-          "id": "archlens.sidebarView",
+          "id": "atlante.sidebarView",
           "name": "Atlante"
         }
       ]
     },
     "walkthroughs": [
       {
-        "id": "archlens.getStarted",
+        "id": "atlante.getStarted",
         "title": "Get Started with Atlante",
         "description": "Scan a workspace and inspect files, imports, exports, and internal dependencies.",
         "steps": [
           {
-            "id": "archlens.openInventory",
+            "id": "atlante.openInventory",
             "title": "Open Source Inventory",
-            "description": "Open the deterministic source inventory for the current workspace.\n\n[Open Atlante](command:archlens.showDiagram)",
+            "description": "Open the deterministic source inventory for the current workspace.\n\n[Open Atlante](command:atlante.showDiagram)",
             "media": {
               "markdown": ""
             }
           },
           {
-            "id": "archlens.analyzeWorkspace",
+            "id": "atlante.analyzeWorkspace",
             "title": "Analyze the Workspace",
-            "description": "Run the static scan to build the file inventory.\n\n[Analyze Source Inventory](command:archlens.analyzeWorkspace)",
+            "description": "Run the static scan to build the file inventory.\n\n[Analyze Source Inventory](command:atlante.analyzeWorkspace)",
             "media": {
               "markdown": ""
             }
           },
           {
-            "id": "archlens.reviewInventory",
+            "id": "atlante.reviewInventory",
             "title": "Review the Inventory",
             "description": "Use search, filters, and row expansion to inspect imports, exports, fan-in, and fan-out.",
             "media": {

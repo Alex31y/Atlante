@@ -24,7 +24,7 @@ export class DiagramPanelProvider {
     }
 
     this.panel = vscode.window.createWebviewPanel(
-      'archlens.diagramPanel',
+      'atlante.diagramPanel',
       'Atlante',
       vscode.ViewColumn.Beside,
       {
@@ -96,24 +96,24 @@ export class DiagramPanelProvider {
   <title>Atlante</title>
   <style>
     :root {
-      --archlens-canvas-bg: #FFFDF7;
-      --archlens-card-bg: #ffffff;
-      --archlens-surface-bg: #f7f5f0;
-      --archlens-text-primary: #3D3929;
-      --archlens-text-secondary: #6b6560;
-      --archlens-text-tertiary: #9a9590;
-      --archlens-border-default: #e5e2db;
-      --archlens-border-subtle: #ede9e1;
-      --archlens-accent-primary: #3D3929;
-      --archlens-accent-hover: #2e2b1f;
+      --atlante-canvas-bg: #FFFDF7;
+      --atlante-card-bg: #ffffff;
+      --atlante-surface-bg: #f7f5f0;
+      --atlante-text-primary: #3D3929;
+      --atlante-text-secondary: #6b6560;
+      --atlante-text-tertiary: #9a9590;
+      --atlante-border-default: #e5e2db;
+      --atlante-border-subtle: #ede9e1;
+      --atlante-accent-primary: #3D3929;
+      --atlante-accent-hover: #2e2b1f;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: var(--archlens-canvas-bg);
-      color: var(--archlens-text-primary);
+      background: var(--atlante-canvas-bg);
+      color: var(--atlante-text-primary);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }

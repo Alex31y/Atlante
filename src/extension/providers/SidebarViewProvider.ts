@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { ProjectEntry } from '../../shared/types/projects';
 
 export class SidebarViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'archlens.sidebarView';
+  public static readonly viewType = 'atlante.sidebarView';
 
   private view: vscode.WebviewView | undefined;
   private activeProjectPath: string | undefined;
@@ -29,13 +29,13 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
     }) => {
       this.onDebugMessage?.('Sidebar message received.', msg);
       if (msg.command === 'openInventory') {
-        vscode.commands.executeCommand('archlens.showDiagram');
+        vscode.commands.executeCommand('atlante.showDiagram');
       } else if (msg.command === 'analyzeWorkspace') {
-        vscode.commands.executeCommand('archlens.analyzeWorkspace');
+        vscode.commands.executeCommand('atlante.analyzeWorkspace');
       } else if (msg.command === 'selectProject' && msg.fsPath) {
-        vscode.commands.executeCommand('archlens.switchProject', vscode.Uri.file(msg.fsPath));
+        vscode.commands.executeCommand('atlante.switchProject', vscode.Uri.file(msg.fsPath));
       } else if (msg.command === 'removeProject' && msg.fsPath) {
-        vscode.commands.executeCommand('archlens.removeProject', msg.fsPath);
+        vscode.commands.executeCommand('atlante.removeProject', msg.fsPath);
       }
     });
 

@@ -6,7 +6,7 @@
 export const EXTENSION_ID = 'atlante';
 
 /** Webview panel view type */
-export const DIAGRAM_PANEL_VIEW_TYPE = 'archlens.diagramPanel';
+export const DIAGRAM_PANEL_VIEW_TYPE = 'atlante.diagramPanel';
 
 /** Source file extensions supported (used by FileWatcher and AST Worker) */
 export const SUPPORTED_EXTENSIONS: Record<string, string> = {
@@ -56,9 +56,9 @@ export const DIFF_COLORS = {
 
 /** Violation severity colors (warm earth-tone palette) */
 export const VIOLATION_COLORS = {
-  error: '#b85c4a',         // warm brick — matches KPI red tier
-  warning: '#c4845c',       // warm clay — matches KPI orange tier
-  info: '#9a9590',          // warm gray — same as textTertiary
+  error: '#b85c4a',         // warm brick - matches KPI red tier
+  warning: '#c4845c',       // warm clay - matches KPI orange tier
+  info: '#9a9590',          // warm gray - same as textTertiary
   errorBg: '#f8efeb',
   warningBg: '#f9f2ec',
   infoBg: '#f5f4ef',
@@ -77,7 +77,7 @@ export const CLUSTER_PALETTE = [
 ] as const;
 
 /** Atlante design language tokens */
-export const ARCHLENS_THEME = {
+export const ATLANTE_THEME = {
   // Backgrounds
   canvasBg: '#f8fafb',
   cardBg: '#ffffff',
@@ -96,7 +96,7 @@ export const ARCHLENS_THEME = {
   accentPrimary: '#20242a',
   accentHover: '#111827',
 
-  // Status (UI chrome — not severity)
+  // Status (UI chrome - not severity)
   statusSuccess: '#7a8c6e',
   statusSuccessText: '#16a34a',
 
@@ -108,9 +108,9 @@ export const ARCHLENS_THEME = {
   alertWarningBg: '#fffbeb',
   alertWarningBorder: '#fde68a',
 
-  // Semantic term highlights (Architecture page — tech stack vs domain context)
-  termTechBg: '#e8edf3',     // cool blue tint — libraries, frameworks, formats, algorithms
-  termDomainBg: '#f3e8de',   // warm orange tint — external systems, data sources, organizations
+  // Semantic term highlights (Architecture page - tech stack vs domain context)
+  termTechBg: '#e8edf3',     // cool blue tint - libraries, frameworks, formats, algorithms
+  termDomainBg: '#f3e8de',   // warm orange tint - external systems, data sources, organizations
 
   // Shadows
   shadowSm: '0 1px 2px rgba(26,25,21,0.04), 0 1px 4px rgba(26,25,21,0.06)',
@@ -144,9 +144,9 @@ export const EDGE_LABEL_MAX_CHARS = 20;
 export const SAME_LAYER_ARC_MAX_HEIGHT = 60;
 
 /** Root folder name for all Atlante data stored in the project */
-export const ARCHLENS_DIR = '.atlante';
+export const ATLANTE_DIR = '.atlante';
 
-/** Relative paths (from ARCHLENS_DIR) for each feature's persisted data */
+/** Relative paths (from ATLANTE_DIR) for each feature's persisted data */
 export const STORAGE_PATHS = {
   model:      'analysis/model.json',
   hypothesis: 'analysis/hypothesis.json',

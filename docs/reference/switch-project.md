@@ -4,7 +4,7 @@ Switches the active project in Atlante's library, loading its inventory without 
 
 ## Command
 
-- ID: `archlens.switchProject`
+- ID: `atlante.switchProject`
 - Title: **Atlante: Switch Project**
 - Visible in command palette: yes
 
@@ -25,7 +25,7 @@ Projects that no longer exist on disk are pruned at startup.
 
 ## Code
 
-- [src/extension/extension.ts](../../src/extension/extension.ts) — command handler
+- [src/extension/extension.ts](../../src/extension/extension.ts) - command handler
 - [src/extension/services/ProjectRegistryService.ts](../../src/extension/services/ProjectRegistryService.ts)
 - [src/extension/providers/SidebarViewProvider.ts](../../src/extension/providers/SidebarViewProvider.ts)
 

@@ -6,14 +6,14 @@ VS Code walkthrough that onboards new users in three steps.
 
 Declared in `package.json` under `contributes.walkthroughs`:
 
-- ID: `archlens.getStarted`
+- ID: `atlante.getStarted`
 - Title: **Get Started with Atlante**
 
 ## Steps
 
 1. **Open Source Inventory** → runs [show-diagram](show-diagram.md)
 2. **Analyze the Workspace** → runs [analyze-workspace](analyze-workspace.md)
-3. **Review the Inventory** — guidance on search, filters, and row expansion in the [source-inventory-table](source-inventory-table.md)
+3. **Review the Inventory** - guidance on search, filters, and row expansion in the [source-inventory-table](source-inventory-table.md)
 
 ## How to trigger
 
@@ -22,4 +22,4 @@ Declared in `package.json` under `contributes.walkthroughs`:
 
 ## Code
 
-- [package.json](../../package.json) — `contributes.walkthroughs` block
+- [package.json](../../package.json) - `contributes.walkthroughs` block

@@ -256,7 +256,7 @@ export class AnalysisOrchestrator {
   }
 
   private async discoverFiles(workspaceRoot: string): Promise<string[]> {
-    const config = vscode.workspace.getConfiguration('archlens');
+    const config = vscode.workspace.getConfiguration('atlante');
     const excludePatterns = config.get<string[]>('excludePatterns') ?? [];
     const maxFiles = config.get<number>('maxFilesForFullAnalysis') ?? 500;
     const extensions = Object.keys(SUPPORTED_EXTENSIONS).map((ext) => ext.slice(1));
