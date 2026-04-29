@@ -29,7 +29,7 @@ Three principles, in order:
 
 ## The workflow
 
-1. You're deep in a Claude Code / Cursor / Aider session. Things feel slow. Edits start failing.
+1. You're deep in a Claude Code / Codex / Cursor / Aider session. Things feel slow. Edits start failing.
 2. Run **Analyze Workspace**.
 3. Open the table. It is already sorted by lines of code, largest first.
 4. Click **Copy Agent Prompt** to generate a structured triage prompt with your top files and dependency signals.
